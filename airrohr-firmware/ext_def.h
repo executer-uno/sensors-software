@@ -196,3 +196,16 @@ static const uint16_t suites[] PROGMEM = {
 #define CLIENT_ADDRESS 2
 #define SERVER_ADDRESS 100
 #endif
+
+#if defined(ESP8266)
+//GPIO Pins
+#define D0 16
+#define D1 5    // RX Serial SDS
+#define D2 4    // TX Serial SDS
+#define D3 0    // I2C SDA
+#define D4 2    // I2C SCL
+#define D5 14   // RX GPS
+#define D6 12   // TX GPS
+#define D7 13   // OneWire
+#define D8 15
+#endif
