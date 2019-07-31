@@ -10,6 +10,11 @@
 #define WWW_PASSWORD "feinstaub"
 #define WWW_BASICAUTH_ENABLED 0
 
+
+  // Replace with your own script id to make server side changes
+  const char *GScriptId = ***REMOVED***;
+
+  
 // Sensor Wifi config (config mode)
 #define FS_SSID ""
 #define FS_PWD ""
