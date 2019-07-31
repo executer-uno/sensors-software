@@ -99,8 +99,8 @@
  * Globale Variablen verwenden 37160 Bytes (45%) des dynamischen Speichers, 44760 Bytes für lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  ************************************************************************/
-// increment on change
-#define SOFTWARE_VERSION "NRZ-2018-124B"
+// increment on change 
+#define SOFTWARE_VERSION "NRZ-2019-07GS"
 
 // Config functionality
 //#define CFG_LCD
@@ -157,6 +157,7 @@
 #include <time.h>
 #include <coredecls.h>
 #include <assert.h>
+#include <HTTPSRedirect.h>
 
 #if defined(INTL_BG)
 #include "intl_bg.h"
@@ -200,6 +201,10 @@ const unsigned long DISPLAY_UPDATE_INTERVAL_MS = 5000;
 const unsigned long ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 const unsigned long PAUSE_BETWEEN_UPDATE_ATTEMPTS_MS = ONE_DAY_IN_MS;        // check for firmware updates once a day
 const unsigned long DURATION_BEFORE_FORCED_RESTART_MS = ONE_DAY_IN_MS * 28;  // force a reboot every ~4 weeks
+
+const char* host = "script.google.com";
+const int httpsPort = 443;
+const char* fingerprint = "";
 
 /******************************************************************
  * The variables inside the cfg namespace are persistent          *
@@ -499,6 +504,18 @@ struct struct_wifiInfo {
 
 struct struct_wifiInfo *wifiInfo;
 uint8_t count_wifiInfo;
+
+// For google spreadsheets:
+String url = String("/macros/s/") + GScriptId + "/exec?value=Hello";  // Write to Google Spreadsheet
+String url2 = String("/macros/s/") + GScriptId + "/exec?cal";         // Fetch Google Calendar events for 1 week ahead
+String url3 = String("/macros/s/") + GScriptId + "/exec?read";        // Read from Google Spreadsheet
+String payload_base =  "{\"command\": \"appendRow\", \
+                      \"sheet_name\": \"DATA\", \
+                          \"values\": ";
+String payload = "";
+HTTPSRedirect* client = nullptr;
+static unsigned long error_count = 0; // Errors counter not resetable until sucess data push
+
 
 template<typename T, std::size_t N> constexpr std::size_t array_num_elements(const T(&)[N]) {
 	return N;
@@ -3822,6 +3839,39 @@ void setup() {
 	time_point_device_start_ms = starttime;
 	starttime_SDS = starttime;
 	next_display_millis = starttime + DISPLAY_UPDATE_INTERVAL_MS;
+
+  // For google spreadsheets
+  // Use HTTPSRedirect class to create a new TLS connection
+  client = new HTTPSRedirect(httpsPort);
+  client->setInsecure();  
+  client->setPrintResponseBody(false);
+  client->setContentTypeHeader("application/json");
+  Serial.print("Connecting to ");
+  Serial.println(host); 
+  // Try to connect for a maximum of 3 times
+  bool flag = false;
+  for (int i=0; i<3; i++){
+    int retval = client->connect(host, httpsPort);
+    if (retval == 1) {
+       flag = true;
+       break;
+    }
+    else {
+      Serial.println("Connection failed. Retrying...");
+      Serial.println(client->getResponseBody() );
+      error_count++;
+    }
+  }
+
+  if (!flag){
+    Serial.print("Could not connect to server: ");
+    Serial.println(host);
+    // Retry further after measurement cycle done
+  }
+  // delete HTTPSRedirect object
+  delete client;
+  client = nullptr;
+    
 }
 
 static void checkForceRestart() {
@@ -4170,5 +4220,5 @@ void loop() {
 		count_sends += 1;
 	}
 	yield();
-//	if (sample_count % 500 == 0) { Serial.println(ESP.getFreeHeap(),DEC); }
+	if (sample_count % 10000 == 0) { Serial.print("Free heap: "); Serial.println(ESP.getFreeHeap(),DEC); }
 }
