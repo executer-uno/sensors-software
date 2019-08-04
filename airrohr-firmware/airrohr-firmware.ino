@@ -175,10 +175,6 @@ const unsigned long ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 const unsigned long PAUSE_BETWEEN_UPDATE_ATTEMPTS_MS = ONE_DAY_IN_MS;        // check for firmware updates once a day
 const unsigned long DURATION_BEFORE_FORCED_RESTART_MS = ONE_DAY_IN_MS * 28;  // force a reboot every ~4 weeks
 
-const char* host = "script.google.com";
-const int httpsPort = 443;
-const char* fingerprint = "";
-
 /******************************************************************
  * The variables inside the cfg namespace are persistent          *
  * configuration values. They have defaults which can be          *
@@ -467,17 +463,6 @@ struct struct_wifiInfo {
 
 struct struct_wifiInfo *wifiInfo;
 uint8_t count_wifiInfo;
-
-// For google spreadsheets:
-String url = String("/macros/s/") + GScriptId + "/exec?value=Hello";  // Write to Google Spreadsheet
-String url2 = String("/macros/s/") + GScriptId + "/exec?cal";         // Fetch Google Calendar events for 1 week ahead
-String url3 = String("/macros/s/") + GScriptId + "/exec?read";        // Read from Google Spreadsheet
-String payload_base =  "{\"command\": \"appendRow\", \
-                      \"sheet_name\": \"DATA\", \
-                          \"values\": ";
-String payload = "";
-HTTPSRedirect* client = nullptr;
-static unsigned long error_count = 0; // Errors counter not resetable until sucess data push
 
 
 template<typename T, std::size_t N> constexpr std::size_t array_num_elements(const T(&)[N]) {
@@ -3768,7 +3753,7 @@ void setup() {
 	time_point_device_start_ms = starttime;
 	starttime_SDS = starttime;
 	next_display_millis = starttime + DISPLAY_UPDATE_INTERVAL_MS;
-
+/*
   // For google spreadsheets
   // Use HTTPSRedirect class to create a new TLS connection
   client = new HTTPSRedirect(httpsPort);
@@ -3800,7 +3785,7 @@ void setup() {
   // delete HTTPSRedirect object
   delete client;
   client = nullptr;
-    
+   */ 
 }
 
 static void checkForceRestart() {
@@ -3863,6 +3848,22 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 		sendData(data_4_custom, 0, cfg::host_custom, cfg::port_custom, cfg::url_custom, false, basic_auth_custom.c_str(), FPSTR(TXT_CONTENT_TYPE_JSON));
 		sum_send_time += millis() - start_send;
 	}
+ 
+  // to google spreadsheets - always
+  if (true){//cfg::send2custom) {
+    String data_4_custom = data;
+    char* Gurl = "/macros/s/AKfycbxe53UIDZCphPduWGwfOntCxlfgSM28axKqxbZtCA/exec?func=appendRow&val=";
+    data_4_custom.remove(0, 1);
+    data_4_custom = "{\"esp8266id\": \"" + String(esp_chipid) + "\", " + data_4_custom;
+    debug_out(String(FPSTR(DBG_TXT_SENDING_TO)) + F("To Google spreadsheets: "), DEBUG_MIN_INFO, 1);
+    start_send = millis();
+    sendData(data_4_custom, 0, "script.google.com", 443, Gurl, false, basic_auth_custom.c_str(), FPSTR(TXT_CONTENT_TYPE_JSON));
+              
+   
+    sum_send_time += millis() - start_send;
+  }
+
+ 
 	return sum_send_time;
 }
 
@@ -4139,5 +4140,5 @@ void loop() {
 		count_sends += 1;
 	}
 	yield();
-	if (sample_count % 10000 == 0) { Serial.print("Free heap: "); Serial.println(ESP.getFreeHeap(),DEC); }
+	if (sample_count % 20000 == 0) { Serial.print("Free heap: "); Serial.println(ESP.getFreeHeap(),DEC); }
 }

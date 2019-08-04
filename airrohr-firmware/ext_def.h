@@ -2,8 +2,8 @@
 #define CURRENT_LANG INTL_LANG
 
 // Wifi config
-#define WLANSSID "Freifunk-disabled"
-#define WLANPWD ""
+#define WLANSSID ***REMOVED***
+#define WLANPWD ***REMOVED***
 
 // BasicAuth config
 #define WWW_USERNAME "admin"
@@ -12,8 +12,8 @@
 
 
   // Replace with your own script id to make server side changes
-  const char *GScriptId = ***REMOVED***;
-
+  //const char *GScriptId = ***REMOVED***;
+  const char *GScriptId = "AKfycbxe53UIDZCphPduWGwfOntCxlfgSM28axKqxbZtCA";
   
 // Sensor Wifi config (config mode)
 #define FS_SSID ""
