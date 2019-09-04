@@ -100,7 +100,13 @@
  *
  ************************************************************************/
 // increment on change
-#define SOFTWARE_VERSION "NRZ-2018-123B"
+#define SOFTWARE_VERSION "NRZ-2018-124B"
+
+// Config functionality
+//#define CFG_LCD
+//#define CFG_DHT
+//#define CFG_DALLAS
+//#define CFG_GPS
 
 /*****************************************************************
  * Includes                                                      *
@@ -114,10 +120,14 @@
 //#include <WiFiClientSecure.h>
 //#include <WiFiClientSecureBearSSL.h>
 #include <SoftwareSerial.h>
+
+#ifdef CFG_LCD
 #include "./oledfont.h"				// avoids including the default Arial font, needs to be included before SSD1306.h
 #include <SSD1306.h>
 #include <SH1106.h>
 #include <LiquidCrystal_I2C.h>
+#endif
+
 #include <base64.h>
 #include <ArduinoJson.h>
 #include "./DHT.h"
@@ -296,6 +306,7 @@ bool bme280_init_failed = false;
 ESP8266WebServer server(80);
 int TimeZone = 1;
 
+#ifdef CFG_LCD
 /*****************************************************************
  * Display definitions                                           *
  *****************************************************************/
@@ -304,6 +315,7 @@ SH1106 display_sh1106(0x3c, I2C_PIN_SDA, I2C_PIN_SCL);
 LiquidCrystal_I2C lcd_1602_27(0x27, 16, 2);
 LiquidCrystal_I2C lcd_1602_3f(0x3F, 16, 2);
 LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
+#endif
 
 /*****************************************************************
  * SDS011 declarations                                           *
@@ -494,6 +506,9 @@ void debug_out(const String& text, const int level, const bool linebreak) {
 void display_debug(const String& text1, const String& text2) {
 	debug_out(F("output debug text to displays..."), DEBUG_MIN_INFO, 1);
 	debug_out(text1 + "\n" + text2, DEBUG_MAX_INFO, 1);
+
+ 
+#ifdef CFG_LCD 
 	if (cfg::has_display) {
 		display.clear();
 		display.displayOn();
@@ -531,7 +546,9 @@ void display_debug(const String& text1, const String& text2) {
 		lcd_2004_27.setCursor(0, 1);
 		lcd_2004_27.print(text2);
 	}
+#endif 
 }
+
 
 /*****************************************************************
  * check display values, return '-' if undefined                 *
@@ -3241,6 +3258,7 @@ static String displayGenerateFooter(unsigned int screen_count) {
 	return display_footer;
 }
 
+#ifdef CFG_LCD 
 /*****************************************************************
  * display values                                                *
  *****************************************************************/
@@ -3342,6 +3360,7 @@ void display_values() {
 	}
 	screens[screen_count++] = 4;	// Wifi info
 	screens[screen_count++] = 5;	// chipID, firmware and count of measurements
+
 	if (cfg::has_display || cfg::has_sh1106 || cfg::has_lcd2004_27) {
 		switch (screens[next_display_count % screen_count]) {
 		case (1):
@@ -3475,7 +3494,9 @@ void display_values() {
 	next_display_count += 1;
 	next_display_millis = millis() + DISPLAY_UPDATE_INTERVAL_MS;
 }
+#endif
 
+#ifdef CFG_LCD
 /*****************************************************************
  * Init OLED display                                             *
  *****************************************************************/
@@ -3501,6 +3522,7 @@ void init_lcd() {
 		lcd_2004_27.backlight();
 	}
 }
+#endif
 
 /*****************************************************************
  * Init BMP280                                                   *
@@ -3710,8 +3732,11 @@ void setup() {
 	cfg::initNonTrivials(esp_chipid.c_str());
 	readConfig();
 
+#ifdef CFG_LCD
 	init_display();
 	init_lcd();
+#endif
+
 	setup_webserver();
 	display_debug(F("Connecting to"), String(cfg::wlanssid));
 	connectWifi();
@@ -3919,10 +3944,12 @@ void loop() {
 		starttime_GPS = act_milli;
 	}
 
+#ifdef CFG_LCD
 	if ((cfg::has_display || cfg::has_sh1106 || cfg::has_lcd2004_27 || cfg::has_lcd1602 ||
 			cfg::has_lcd1602_27) && (act_milli > next_display_millis)) {
 		display_values();
 	}
+#endif
 
 	if (send_now) {
 		debug_out(F("Creating data string:"), DEBUG_MIN_INFO, 1);
