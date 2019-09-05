@@ -139,7 +139,12 @@
 #include <Adafruit_BMP085.h>
 #include <Adafruit_BMP280.h>
 #include <Adafruit_BME280.h>
+
+#ifdef CFG_DALLAS
 #include <DallasTemperature.h>
+#endif
+
+
 #include <TinyGPS++.h>
 #include <time.h>
 #include <coredecls.h>
@@ -354,11 +359,13 @@ Adafruit_BMP280 bmp280;
  *****************************************************************/
 Adafruit_BME280 bme280;
 
+#ifdef CFG_DALLAS
 /*****************************************************************
  * DS18B20 declaration                                            *
  *****************************************************************/
 OneWire oneWire(ONEWIRE_PIN);
 DallasTemperature ds18b20(&oneWire);
+#endif
 
 /*****************************************************************
  * GPS declaration                                               *
@@ -2548,6 +2555,7 @@ static String sensorBME280() {
 	return s;
 }
 
+#ifdef CFG_DALLAS
 /*****************************************************************
  * read DS18B20 sensor values                                    *
  *****************************************************************/
@@ -2583,6 +2591,7 @@ static String sensorDS18B20() {
 
 	return s;
 }
+#endif
 
 /*****************************************************************
  * read SDS011 sensor values                                     *
@@ -3644,10 +3653,13 @@ static void powerOnTestSensors() {
 		}
 	}
 
+#ifdef CFG_DALLAS
 	if (cfg::ds18b20_read) {
 		ds18b20.begin();                                    // Start DS18B20
 		debug_out(F("Read DS18B20..."), DEBUG_MIN_INFO, 1);
 	}
+#endif
+
 }
 
 static void logEnabledAPIs() {
@@ -3944,10 +3956,13 @@ void loop() {
 			result_BME280 = sensorBME280();                 // getting temperature, humidity and pressure (optional)
 		}
 
+#ifdef CFG_DALLAS
 		if (cfg::ds18b20_read) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_DS18B20), DEBUG_MAX_INFO, 1);
 			result_DS18B20 = sensorDS18B20();               // getting temperature (optional)
 		}
+#endif  
+ 
 	}
 
 	if (cfg::gps_read && ((msSince(starttime_GPS) > SAMPLETIME_GPS_MS) || send_now)) {
