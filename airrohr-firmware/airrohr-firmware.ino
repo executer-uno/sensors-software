@@ -130,7 +130,11 @@
 
 #include <base64.h>
 #include <ArduinoJson.h>
+
+#ifdef CFG_DHT
 #include "./DHT.h"
+#endif
+
 #include <Adafruit_HTU21DF.h>
 #include <Adafruit_BMP085.h>
 #include <Adafruit_BMP280.h>
@@ -323,10 +327,12 @@ LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
 SoftwareSerial serialSDS(PM_SERIAL_RX, PM_SERIAL_TX, false, 128);
 SoftwareSerial serialGPS(GPS_SERIAL_RX, GPS_SERIAL_TX, false, 512);
 
+#ifdef CFG_DHT
 /*****************************************************************
  * DHT declaration                                               *
  *****************************************************************/
 DHT dht(ONEWIRE_PIN, DHT_TYPE);
+#endif
 
 /*****************************************************************
  * HTU21D declaration                                            *
@@ -2366,6 +2372,7 @@ void send_csv(const String& data) {
 	}
 }
 
+#ifdef CFG_DHT
 /*****************************************************************
  * read DHT22 sensor values                                      *
  *****************************************************************/
@@ -2407,6 +2414,8 @@ static String sensorDHT() {
 
 	return s;
 }
+#endif
+
 
 /*****************************************************************
  * read HTU21D sensor values                                     *
@@ -3599,10 +3608,12 @@ static void powerOnTestSensors() {
 		is_HPM_running = HPM_cmd(PmSensorCmd::Stop);
 	}
 
+#ifdef CFG_DHT
 	if (cfg::dht_read) {
 		dht.begin();                                        // Start DHT
 		debug_out(F("Read DHT..."), DEBUG_MIN_INFO, 1);
 	}
+#endif
 
 	if (cfg::htu21d_read) {
 		htu21d.begin();                                     // Start HTU21D
@@ -3907,11 +3918,12 @@ void loop() {
 	server.handleClient();
 
 	if (send_now) {
+#ifdef CFG_DHT
 		if (cfg::dht_read) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_DHT22), DEBUG_MAX_INFO, 1);
 			result_DHT = sensorDHT();                       // getting temperature and humidity (optional)
 		}
-
+#endif
 		if (cfg::htu21d_read) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_HTU21D), DEBUG_MAX_INFO, 1);
 			result_HTU21D = sensorHTU21D();                 // getting temperature and humidity (optional)
