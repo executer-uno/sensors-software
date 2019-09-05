@@ -144,8 +144,10 @@
 #include <DallasTemperature.h>
 #endif
 
-
+#ifdef CFG_GPS
 #include <TinyGPS++.h>
+#endif
+
 #include <time.h>
 #include <coredecls.h>
 #include <assert.h>
@@ -367,10 +369,12 @@ OneWire oneWire(ONEWIRE_PIN);
 DallasTemperature ds18b20(&oneWire);
 #endif
 
+#ifdef CFG_GPS
 /*****************************************************************
  * GPS declaration                                               *
  *****************************************************************/
 TinyGPSPlus gps;
+#endif
 
 /*****************************************************************
  * Variable Definitions for PPD24NS                              *
@@ -3137,6 +3141,7 @@ String sensorPPD() {
 	return s;
 }
 
+#ifdef CFG_GPS
 /*****************************************************************
  * read GPS sensor values                                        *
  *****************************************************************/
@@ -3232,6 +3237,7 @@ String sensorGPS() {
 
 	return s;
 }
+#endif
 
 /*****************************************************************
  * AutoUpdate                                                    *
@@ -3965,11 +3971,13 @@ void loop() {
  
 	}
 
+#ifdef CFG_GPS
 	if (cfg::gps_read && ((msSince(starttime_GPS) > SAMPLETIME_GPS_MS) || send_now)) {
 		debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + "GPS", DEBUG_MAX_INFO, 1);
 		result_GPS = sensorGPS();                           // getting GPS coordinates
 		starttime_GPS = act_milli;
 	}
+#endif
 
 #ifdef CFG_LCD
 	if ((cfg::has_display || cfg::has_sh1106 || cfg::has_lcd2004_27 || cfg::has_lcd1602 ||
