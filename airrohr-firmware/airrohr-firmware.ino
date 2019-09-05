@@ -107,6 +107,8 @@
 //#define CFG_DHT
 //#define CFG_DALLAS
 //#define CFG_GPS
+//#define CFG_UPDATE
+//#define CFG_PT_ADD
 
 /*****************************************************************
  * Includes                                                      *
@@ -116,7 +118,9 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+#ifdef CFG_UPDATE
 #include <ESP8266httpUpdate.h>
+#endif
 //#include <WiFiClientSecure.h>
 //#include <WiFiClientSecureBearSSL.h>
 #include <SoftwareSerial.h>
@@ -135,9 +139,11 @@
 #include "./DHT.h"
 #endif
 
+#ifdef CFG_PT_ADD
 #include <Adafruit_HTU21DF.h>
 #include <Adafruit_BMP085.h>
 #include <Adafruit_BMP280.h>
+#endif
 #include <Adafruit_BME280.h>
 
 #ifdef CFG_DALLAS
@@ -341,6 +347,7 @@ SoftwareSerial serialGPS(GPS_SERIAL_RX, GPS_SERIAL_TX, false, 512);
 DHT dht(ONEWIRE_PIN, DHT_TYPE);
 #endif
 
+#ifdef CFG_PT_ADD
 /*****************************************************************
  * HTU21D declaration                                            *
  *****************************************************************/
@@ -355,6 +362,7 @@ Adafruit_BMP085 bmp;
  * BMP280 declaration                                               *
  *****************************************************************/
 Adafruit_BMP280 bmp280;
+#endif
 
 /*****************************************************************
  * BME280 declaration                                            *
@@ -2427,7 +2435,7 @@ static String sensorDHT() {
 }
 #endif
 
-
+#ifdef CFG_PT_ADD
 /*****************************************************************
  * read HTU21D sensor values                                     *
  *****************************************************************/
@@ -2520,6 +2528,7 @@ static String sensorBMP280() {
 
 	return s;
 }
+#endif
 
 /*****************************************************************
  * read BME280 sensor values                                     *
@@ -3239,6 +3248,7 @@ String sensorGPS() {
 }
 #endif
 
+#ifdef CFG_UPDATE
 /*****************************************************************
  * AutoUpdate                                                    *
  *****************************************************************/
@@ -3273,6 +3283,7 @@ static void autoUpdate() {
 		}
 	}
 }
+#endif
 
 static String displayGenerateFooter(unsigned int screen_count) {
 	String display_footer;
@@ -3548,6 +3559,7 @@ void init_lcd() {
 }
 #endif
 
+#ifdef CFG_PT_ADD
 /*****************************************************************
  * Init BMP280                                                   *
  *****************************************************************/
@@ -3563,6 +3575,7 @@ bool initBMP280(char addr) {
 		return false;
 	}
 }
+#endif
 
 /*****************************************************************
  * Init BME280                                                   *
@@ -3630,6 +3643,7 @@ static void powerOnTestSensors() {
 	}
 #endif
 
+#ifdef CFG_PT_ADD
 	if (cfg::htu21d_read) {
 		htu21d.begin();                                     // Start HTU21D
 		debug_out(F("Read HTU21D..."), DEBUG_MIN_INFO, 1);
@@ -3650,6 +3664,7 @@ static void powerOnTestSensors() {
 			bmp280_init_failed = 1;
 		}
 	}
+#endif
 
 	if (cfg::bme280_read) {
 		debug_out(F("Read BME280..."), DEBUG_MIN_INFO, 1);
@@ -3772,7 +3787,9 @@ void setup() {
 	got_ntp = acquireNetworkTime();
 	debug_out(F("\nNTP time "), DEBUG_MIN_INFO, 0);
 	debug_out(String(got_ntp?"":"not ")+F("received"), DEBUG_MIN_INFO, 1);
+#ifdef CFG_UPDATE
 	autoUpdate();
+#endif
 	create_basic_auth_strings();
 	serialSDS.begin(9600);
 	debug_out(F("\nChipId: "), DEBUG_MIN_INFO, 0);
@@ -3942,6 +3959,7 @@ void loop() {
 			result_DHT = sensorDHT();                       // getting temperature and humidity (optional)
 		}
 #endif
+#ifdef CFG_PT_ADD
 		if (cfg::htu21d_read) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_HTU21D), DEBUG_MAX_INFO, 1);
 			result_HTU21D = sensorHTU21D();                 // getting temperature and humidity (optional)
@@ -3956,6 +3974,7 @@ void loop() {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP280), DEBUG_MAX_INFO, 1);
 			result_BMP280 = sensorBMP280();                 // getting temperature, humidity and pressure (optional)
 		}
+#endif
 
 		if (cfg::bme280_read && (! bme280_init_failed)) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BME280), DEBUG_MAX_INFO, 1);
@@ -4119,11 +4138,11 @@ void loop() {
 		server.begin();
 
 		checkForceRestart();
-
+#ifdef CFG_UPDATE
 		if (msSince(last_update_attempt) > PAUSE_BETWEEN_UPDATE_ATTEMPTS_MS) {
 			autoUpdate();
 		}
-
+#endif
 		sending_time = (4 * sending_time + sum_send_time) / 5;
 		debug_out(F("Time for sending data (ms): "), DEBUG_MIN_INFO, 0);
 		debug_out(String(sending_time), DEBUG_MIN_INFO, 1);
