@@ -109,6 +109,8 @@
 //#define CFG_GPS
 //#define CFG_UPDATE
 //#define CFG_PT_ADD
+#define CFG_BMP180
+//#define CFG_BME280
 
 /*****************************************************************
  * Includes                                                      *
@@ -141,10 +143,16 @@
 
 #ifdef CFG_PT_ADD
 #include <Adafruit_HTU21DF.h>
-#include <Adafruit_BMP085.h>
 #include <Adafruit_BMP280.h>
 #endif
+
+#ifdef CFG_BMP180
+#include <Adafruit_BMP085.h>
+#endif
+
+#ifdef CFG_BMP180
 #include <Adafruit_BME280.h>
+#endif
 
 #ifdef CFG_DALLAS
 #include <DallasTemperature.h>
@@ -358,10 +366,7 @@ DHT dht(ONEWIRE_PIN, DHT_TYPE);
  *****************************************************************/
 Adafruit_HTU21DF htu21d;
 
-/*****************************************************************
- * BMP declaration                                               *
- *****************************************************************/
-Adafruit_BMP085 bmp;
+
 
 /*****************************************************************
  * BMP280 declaration                                               *
@@ -369,10 +374,19 @@ Adafruit_BMP085 bmp;
 Adafruit_BMP280 bmp280;
 #endif
 
+#ifdef CFG_BMP180
+/*****************************************************************
+ * BMP declaration                                               *
+ *****************************************************************/
+Adafruit_BMP085 bmp;
+#endif
+
+#ifdef CFG_BME280
 /*****************************************************************
  * BME280 declaration                                            *
  *****************************************************************/
 Adafruit_BME280 bme280;
+#endif
 
 #ifdef CFG_DALLAS
 /*****************************************************************
@@ -2485,37 +2499,6 @@ static String sensorHTU21D() {
 }
 
 /*****************************************************************
- * read BMP180 sensor values                                     *
- *****************************************************************/
-static String sensorBMP() {
-	String s;
-
-	debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_BMP180), DEBUG_MED_INFO, 1);
-
-	const auto p = bmp.readPressure();
-	const auto t = bmp.readTemperature();
-	if (isnan(p) || isnan(t)) {
-		last_value_BMP_T = -128.0;
-		last_value_BMP_P = -1.0;
-		debug_out(String(FPSTR(SENSORS_BMP180)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
-	} else {
-		debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-		debug_out(String(t) + " C", DEBUG_MIN_INFO, 1);
-		debug_out(FPSTR(DBG_TXT_PRESSURE), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(p / 100) + " hPa", DEBUG_MIN_INFO, 1);
-		last_value_BMP_T = t;
-		last_value_BMP_P = p;
-		s += Value2Json(F("BMP_pressure"), Float2String(last_value_BMP_P));
-		s += Value2Json(F("BMP_temperature"), Float2String(last_value_BMP_T));
-	}
-	debug_out("----", DEBUG_MIN_INFO, 1);
-
-	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_BMP180), DEBUG_MED_INFO, 1);
-
-	return s;
-}
-
-/*****************************************************************
  * read BMP280 sensor values                                     *
  *****************************************************************/
 static String sensorBMP280() {
@@ -2547,6 +2530,40 @@ static String sensorBMP280() {
 }
 #endif
 
+#ifdef CFG_BMP180
+/*****************************************************************
+ * read BMP180 sensor values                                     *
+ *****************************************************************/
+static String sensorBMP() {
+  String s;
+
+  debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_BMP180), DEBUG_MED_INFO, 1);
+
+  const auto p = bmp.readPressure();
+  const auto t = bmp.readTemperature();
+  if (isnan(p) || isnan(t)) {
+    last_value_BMP_T = -128.0;
+    last_value_BMP_P = -1.0;
+    debug_out(String(FPSTR(SENSORS_BMP180)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
+  } else {
+    debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
+    debug_out(String(t) + " C", DEBUG_MIN_INFO, 1);
+    debug_out(FPSTR(DBG_TXT_PRESSURE), DEBUG_MIN_INFO, 0);
+    debug_out(Float2String(p / 100) + " hPa", DEBUG_MIN_INFO, 1);
+    last_value_BMP_T = t;
+    last_value_BMP_P = p;
+    s += Value2Json(F("BMP_pressure"), Float2String(last_value_BMP_P));
+    s += Value2Json(F("BMP_temperature"), Float2String(last_value_BMP_T));
+  }
+  debug_out("----", DEBUG_MIN_INFO, 1);
+
+  debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_BMP180), DEBUG_MED_INFO, 1);
+
+  return s;
+}
+#endif
+
+#ifdef CFG_BME280
 /*****************************************************************
  * read BME280 sensor values                                     *
  *****************************************************************/
@@ -2584,6 +2601,7 @@ static String sensorBME280() {
 
 	return s;
 }
+#endif
 
 #ifdef CFG_DALLAS
 /*****************************************************************
@@ -3594,6 +3612,7 @@ bool initBMP280(char addr) {
 }
 #endif
 
+#ifdef CFG_BME280
 /*****************************************************************
  * Init BME280                                                   *
  *****************************************************************/
@@ -3615,6 +3634,7 @@ bool initBME280(char addr) {
 		return false;
 	}
 }
+#endif
 
 static void powerOnTestSensors() {
 	if (cfg::ppd_read) {
@@ -3666,13 +3686,7 @@ static void powerOnTestSensors() {
 		debug_out(F("Read HTU21D..."), DEBUG_MIN_INFO, 1);
 	}
 
-	if (cfg::bmp_read) {
-		debug_out(F("Read BMP..."), DEBUG_MIN_INFO, 1);
-		if (!bmp.begin()) {
-			debug_out(F("No valid BMP085 sensor, check wiring!"), DEBUG_MIN_INFO, 1);
-			bmp_init_failed = 1;
-		}
-	}
+
 
 	if (cfg::bmp280_read) {
 		debug_out(F("Read BMP280..."), DEBUG_MIN_INFO, 1);
@@ -3683,6 +3697,17 @@ static void powerOnTestSensors() {
 	}
 #endif
 
+#ifdef CFG_BMP180
+  if (cfg::bmp_read) {
+    debug_out(F("Read BMP..."), DEBUG_MIN_INFO, 1);
+    if (!bmp.begin()) {
+      debug_out(F("No valid BMP085 sensor, check wiring!"), DEBUG_MIN_INFO, 1);
+      bmp_init_failed = 1;
+    }
+  }
+#endif
+
+#ifdef CFG_BME280
 	if (cfg::bme280_read) {
 		debug_out(F("Read BME280..."), DEBUG_MIN_INFO, 1);
 		if (!initBME280(0x76) && !initBME280(0x77)) {
@@ -3690,6 +3715,7 @@ static void powerOnTestSensors() {
 			bme280_init_failed = 1;
 		}
 	}
+#endif
 
 #ifdef CFG_DALLAS
 	if (cfg::ds18b20_read) {
@@ -3787,8 +3813,10 @@ static bool acquireNetworkTime() {
  *****************************************************************/
 void setup() {
 	Serial.begin(9600);					// Output to Serial at 9600 baud
+  #if defined(BMP180) || defined(BME280) || defined(CFG_PT_ADD)
 	Wire.begin(I2C_PIN_SDA, I2C_PIN_SCL);
-
+  #endif
+  
 	esp_chipid = String(ESP.getChipId());
 	cfg::initNonTrivials(esp_chipid.c_str());
 	readConfig();
@@ -4015,10 +4043,7 @@ void loop() {
 			result_HTU21D = sensorHTU21D();                 // getting temperature and humidity (optional)
 		}
 
-		if (cfg::bmp_read && (! bmp_init_failed)) {
-			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP180), DEBUG_MAX_INFO, 1);
-			result_BMP = sensorBMP();                       // getting temperature and pressure (optional)
-		}
+
 
 		if (cfg::bmp280_read && (! bmp280_init_failed)) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP280), DEBUG_MAX_INFO, 1);
@@ -4026,10 +4051,18 @@ void loop() {
 		}
 #endif
 
+#ifdef CFG_BMP180
+    if (cfg::bmp_read && (! bmp_init_failed)) {
+      debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP180), DEBUG_MAX_INFO, 1);
+      result_BMP = sensorBMP();                       // getting temperature and pressure (optional)
+    }
+#endif
+#ifdef CFG_BME280 
 		if (cfg::bme280_read && (! bme280_init_failed)) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BME280), DEBUG_MAX_INFO, 1);
 			result_BME280 = sensorBME280();                 // getting temperature, humidity and pressure (optional)
 		}
+#endif
 
 #ifdef CFG_DALLAS
 		if (cfg::ds18b20_read) {
