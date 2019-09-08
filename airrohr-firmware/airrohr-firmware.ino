@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#define INTL_DE
+#define INTL_EN
+//#define INTL_DE
 
 /************************************************************************
  *                                                                      *
@@ -103,14 +104,14 @@
 #define SOFTWARE_VERSION "NRZ-2019-07GS"
 
 // Config functionality
-//#define CFG_LCD
-//#define CFG_DHT
-//#define CFG_DALLAS
-//#define CFG_GPS
-//#define CFG_UPDATE
-//#define CFG_PT_ADD
+// #define CFG_LCD        // !!!! That option not compatible with Google Spreadsheets
+#define CFG_DHT
+#define CFG_DALLAS
+#define CFG_GPS
+#define CFG_UPDATE
+#define CFG_PT_ADD
 #define CFG_BMP180
-//#define CFG_BME280
+#define CFG_BME280
 
 /*****************************************************************
  * Includes                                                      *
@@ -227,7 +228,7 @@ namespace cfg {
 	char wlanssid[35] = WLANSSID;
 	char wlanpwd[65] = WLANPWD;
 
-	char current_lang[3] = "DE";
+	char current_lang[3] = "EN";
 	char www_username[65] = WWW_USERNAME;
 	char www_password[65] = WWW_PASSWORD;
 	bool www_basicauth_enabled = WWW_BASICAUTH_ENABLED;
@@ -3963,6 +3964,75 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 		sendData(data_4_custom, 0, cfg::host_custom, cfg::port_custom, cfg::url_custom, false, basic_auth_custom.c_str(), FPSTR(TXT_CONTENT_TYPE_JSON));
 		sum_send_time += millis() - start_send;
 	}
+
+
+  if (true) {
+    
+        String data_4_custom = data;
+        data_4_custom.remove(0, 1);
+        data_4_custom = "{\"esp8266id\": \"" + String(esp_chipid) + "\", \"count_sends\": \"" + String(count_sends) + "\"," + data_4_custom;  
+          
+        debug_out(F("Send to spreadsheet"), DEBUG_MIN_INFO, 1);
+        start_send = millis();
+        yield();
+        
+        // Connect to spreadsheet
+        client = new HTTPSRedirect(httpsPort);
+        client->setInsecure();  
+        client->setPrintResponseBody(false);
+        client->setContentTypeHeader("application/json");
+
+        if (client != nullptr){
+          if (!client->connected()){
+
+            // Try to connect for a maximum of 3 times
+            for (int i=0; i<3; i++){
+              int retval = client->connect(host, httpsPort);
+              if (retval == 1) {
+                 break;
+              }
+              else {
+                debug_out(F("Connection failed. Retrying..."), DEBUG_MIN_INFO, 1);
+                Serial.println(client->getResponseBody() );
+                error_count++;
+              }
+            }  
+          }
+        }
+        else{
+          debug_out(F("Error creating client object!"), DEBUG_MIN_INFO, 1);
+          error_count++;
+        }
+        if (!client->connected()){
+          debug_out(F("Connection failed. Stand by till next period"), DEBUG_MIN_INFO, 1);
+        }
+        else
+        {
+          payload = payload_base + data_4_custom;
+          
+          Serial.println(payload);
+          
+          if(client->POST(url2, host, payload)){
+            debug_out(F("Spreadsheet updated"), DEBUG_MIN_INFO, 1);
+            error_count = 0; // reset counter after sucessfull post
+          }
+          else{
+            error_count++;
+            debug_out(F("Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
+          }
+        }
+
+        // delete HTTPSRedirect object
+        delete client;
+        client = nullptr;
+
+        // Debug log
+        Serial.print(F("Spreadsheet updated in "));
+        Serial.print(millis() - start_send);
+        Serial.println(" ms.");        
+        sum_send_time += millis() - start_send;
+  }
+
 	return sum_send_time;
 }
 
@@ -4254,5 +4324,22 @@ void loop() {
 		count_sends += 1;
 	}
 	yield();
-	if (sample_count % 10000 == 0) { Serial.print("Free heap: "); Serial.println(ESP.getFreeHeap(),DEC); }
+	if (sample_count % 50000 == 0) { stats("in loop");}
+	  //Serial.println(ESP.getFreeHeap(),DEC);
+
+}
+
+
+
+void stats(const char* what) {
+  // we could use getFreeHeap() getMaxFreeBlockSize() and getHeapFragmentation()
+  // or all at once:
+  uint32_t free;
+  uint16_t max;
+  uint8_t frag;
+  ESP.getHeapStats(&free, &max, &frag);
+
+  Serial.printf("free: %5d - max: %5d - frag: %3d%% <- ", free, max, frag);
+  // %s requires a malloc that could fail, using println instead:
+  Serial.println(what);
 }
