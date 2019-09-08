@@ -3882,6 +3882,7 @@ void setup() {
     int retval = client->connect(host, httpsPort);
     if (retval == 1) {
        flag = true;
+       Serial.println("Connection sucessfull.");
        break;
     }
     else {
