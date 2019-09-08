@@ -1,5 +1,5 @@
 // Language config
-#define CURRENT_LANG INTL_EN
+#define CURRENT_LANG INTL_LANG
 
 // Wifi config
 #define WLANSSID "Freifunk-disabled"
