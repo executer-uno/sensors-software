@@ -3813,7 +3813,7 @@ static bool acquireNetworkTime() {
  * The Setup                                                     *
  *****************************************************************/
 void setup() {
-	Serial.begin(9600);					// Output to Serial at 9600 baud
+	Serial.begin(74880);					// Output to Serial at 9600 baud
   #if defined(BMP180) || defined(BME280) || defined(CFG_PT_ADD)
 	Wire.begin(I2C_PIN_SDA, I2C_PIN_SCL);
   #endif
