@@ -3861,8 +3861,8 @@ void setup() {
 	delay(50);
 
 	// sometimes parallel sending data and web page will stop nodemcu, watchdogtimer set to 30 seconds
-	wdt_disable();
-	wdt_enable(30000);
+	//wdt_disable();
+	//wdt_enable(30000);
 
 	starttime = millis();                                   // store the start time
 	time_point_device_start_ms = starttime;
