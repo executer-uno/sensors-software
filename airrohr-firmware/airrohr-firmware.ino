@@ -112,6 +112,7 @@
 #define CFG_PT_ADD
 #define CFG_BMP180
 #define CFG_BME280
+#define CFG_BLINK
 
 /*****************************************************************
  * Includes                                                      *
@@ -508,6 +509,9 @@ bool got_ntp = false;
 unsigned long count_sends = 0;
 unsigned long next_display_millis = 0;
 unsigned long next_display_count = 0;
+
+// Led blink delay
+// unsigned long LEDoff_millis = 0;
 
 struct struct_wifiInfo {
 	char ssid[35];
@@ -3813,6 +3817,7 @@ static bool acquireNetworkTime() {
  * The Setup                                                     *
  *****************************************************************/
 void setup() {
+
 	Serial.begin(74880);					// Output to Serial at 9600 baud
   #if defined(BMP180) || defined(BME280) || defined(CFG_PT_ADD)
 	Wire.begin(I2C_PIN_SDA, I2C_PIN_SCL);
@@ -3821,7 +3826,12 @@ void setup() {
 	esp_chipid = String(ESP.getChipId());
 	cfg::initNonTrivials(esp_chipid.c_str());
 	readConfig();
-
+ 
+  #ifdef CFG_BLINK
+  pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
+  digitalWrite(LED_BUILTIN, LOW);
+  #endif
+  
 #ifdef CFG_LCD
 	init_display();
 	init_lcd();
@@ -3901,7 +3911,10 @@ void setup() {
   // delete HTTPSRedirect object
   delete client;
   client = nullptr;
-    
+
+  #ifdef CFG_BLINK
+  digitalWrite(LED_BUILTIN, HIGH);
+  #endif
 }
 
 static void checkForceRestart() {
@@ -4160,6 +4173,13 @@ void loop() {
 #endif
 
 	if (send_now) {
+
+    #ifdef CFG_BLINK
+    // Highlight LED indicator during the data transmission
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
+    #endif
+  
 		debug_out(F("Creating data string:"), DEBUG_MIN_INFO, 1);
 		String data = FPSTR(data_first_part);
 		data.replace("{v}", SOFTWARE_VERSION);
@@ -4324,8 +4344,20 @@ void loop() {
 		count_sends += 1;
 	}
 	yield();
-	if (sample_count % 50000 == 0) { stats("in loop");}
-	  //Serial.println(ESP.getFreeHeap(),DEC);
+  
+  #ifdef CFG_BLINK
+    digitalWrite(LED_BUILTIN, HIGH);
+  #endif
+    
+	if (sample_count % 50000 == 0) {
+	  stats("in loop");
+
+    #ifdef CFG_BLINK
+    pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output  
+    digitalWrite(LED_BUILTIN, LOW);
+    #endif
+
+	  }
 
 }
 
