@@ -101,7 +101,7 @@
  *
  ************************************************************************/
 // increment on change 
-#define SOFTWARE_VERSION "NRZ-2019-07GS"
+#define SOFTWARE_VERSION "NRZ-2019-01GSAI"
 
 // Config functionality
 // #define CFG_LCD        // !!!! That option not compatible with Google Spreadsheets
@@ -528,12 +528,18 @@ uint8_t count_wifiInfo;
 String url = String("/macros/s/") + GScriptId + "/exec?value=Hello";  // Write to Google Spreadsheet
 String url2 = String("/macros/s/") + GScriptId + "/exec?cal";         // Fetch Google Calendar events for 1 week ahead
 String url3 = String("/macros/s/") + GScriptId + "/exec?read";        // Read from Google Spreadsheet
-String payload_base =  "{\"command\": \"appendRow\", \
-                      \"sheet_name\": \"DATA\", \
-                          \"values\": ";
+String payload_base =  "{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", \"values\": ";
 String payload = "";
+
 HTTPSRedirect* client = nullptr;
 static unsigned long error_count = 0; // Errors counter not resetable until sucess data push
+
+// For sensor on analog input
+double        last_value_A0_Max = -9999.0; // unitialized value. Maximum
+double        last_value_A0_Min = -9999.0; // unitialized value. Minimum
+double        last_value_A0_Avg = -9999.0; // unitialized value. Average
+uint8_t       A0_Cnt            = 0;       // number of measurements
+unsigned long last_A0_millis    = 0;       // Time of last measurement
 
 
 template<typename T, std::size_t N> constexpr std::size_t array_num_elements(const T(&)[N]) {
@@ -1832,6 +1838,15 @@ void webserver_values() {
 			page_content += table_row_from_value("GPS", FPSTR(INTL_TIME), last_value_GPS_time, "");
 		}
 
+    // Analog input values
+    if (A0_Cnt>0) {
+      page_content += FPSTR(EMPTY_ROW);
+      page_content += table_row_from_value(F("Analog max"),"", check_display_value(  last_value_A0_Max         , -9999.0, 1, 0), "");
+      page_content += table_row_from_value(F("Analog min"),"", check_display_value(  last_value_A0_Min         , -9999.0, 1, 0), "");
+      page_content += table_row_from_value(F("Analog avg"),"", check_display_value(( last_value_A0_Avg/A0_Cnt ), -9999.0, 1, 0), "");
+
+    }
+
 		page_content += FPSTR(EMPTY_ROW);
 		page_content += table_row_from_value(***REMOVED***, FPSTR(INTL_SIGNAL_STRENGTH),  String(WiFi.RSSI()), "dBm");
 		page_content += table_row_from_value(***REMOVED***, FPSTR(INTL_SIGNAL_QUALITY), String(signal_quality), "%");
@@ -2534,6 +2549,43 @@ static String sensorBMP280() {
 	return s;
 }
 #endif
+
+/*****************************************************************
+ * read sensor values on AnalogInput                             *
+ *****************************************************************/
+static String sensorA0() {
+  String s;
+
+  debug_out(String(F("Result prepare ")) + F("A0 input"), DEBUG_MED_INFO, 1);
+
+  if(A0_Cnt){
+    
+    last_value_A0_Avg /= A0_Cnt;  // Calc average
+    
+    debug_out(F("A0 max"), DEBUG_MIN_INFO, 0);
+    debug_out(String(last_value_A0_Max) + " ", DEBUG_MIN_INFO, 1);
+    debug_out(F("A0 min"), DEBUG_MIN_INFO, 0);
+    debug_out(String(last_value_A0_Min) + " ", DEBUG_MIN_INFO, 1);
+    debug_out(F("A0 avg"), DEBUG_MIN_INFO, 0);
+    debug_out(String((last_value_A0_Avg)) + " ", DEBUG_MIN_INFO, 1);
+        
+    s += Value2Json(F("A0_max"), Float2String(last_value_A0_Max));
+    s += Value2Json(F("A0_min"), Float2String(last_value_A0_Min));
+    s += Value2Json(F("A0_avg"), Float2String(last_value_A0_Avg));
+
+    // prepare for next cycle
+    last_value_A0_Max = -9999.0; // unitialized value. Maximum
+    last_value_A0_Min = -9999.0; // unitialized value. Minimum
+    last_value_A0_Avg = -9999.0; // unitialized value. Average
+    A0_Cnt            = 0;       // number of measurements    
+    
+  }
+  debug_out("----", DEBUG_MIN_INFO, 1);
+
+  debug_out(String(FPSTR(DBG_TXT_END_READING)) + F("A0 input"), DEBUG_MED_INFO, 1);
+
+  return s;
+}
 
 #ifdef CFG_BMP180
 /*****************************************************************
@@ -3729,6 +3781,11 @@ static void powerOnTestSensors() {
 	}
 #endif
 
+
+  debug_out(F("Read A0 input..."), DEBUG_MIN_INFO, 1);
+  Serial.println(analogRead(A0));
+
+
 }
 
 static void logEnabledAPIs() {
@@ -3912,6 +3969,7 @@ void setup() {
   delete client;
   client = nullptr;
 
+
   #ifdef CFG_BLINK
   digitalWrite(LED_BUILTIN, HIGH);
   #endif
@@ -4064,6 +4122,7 @@ void loop() {
 	String result_BME280 = "";
 	String result_DS18B20 = "";
 	String result_GPS = "";
+  String result_A0 = "";
 
 	unsigned long sum_send_time = 0;
 	unsigned long start_send;
@@ -4135,6 +4194,12 @@ void loop() {
 		}
 #endif
 
+    if (A0_Cnt) {
+      debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + F("A0 input"), DEBUG_MAX_INFO, 1);
+      result_A0 = sensorA0();                 // getting analog input value
+    }
+
+    
 #ifdef CFG_BMP180
     if (cfg::bmp_read && (! bmp_init_failed)) {
       debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP180), DEBUG_MAX_INFO, 1);
@@ -4157,6 +4222,27 @@ void loop() {
  
 	}
 
+  // Analog input reading
+  if (msSince(last_A0_millis) > 1000) {
+    const auto AI = analogRead(A0)*1.0; // to float format
+    
+    debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + "A0 input", DEBUG_MAX_INFO, 1);
+    if(A0_Cnt){
+      last_value_A0_Max  = std::max(AI, last_value_A0_Max); // Maximum
+      last_value_A0_Min  = std::min(AI, last_value_A0_Min); // Minimum
+      last_value_A0_Avg += AI;                              // Average
+      A0_Cnt++;                                             // number of measurements
+    }
+    else{
+      last_value_A0_Max = AI; // Maximum
+      last_value_A0_Min = AI; // Minimum
+      last_value_A0_Avg = AI; // Average
+      A0_Cnt            = 1;  // number of measurements
+    }
+
+    last_A0_millis = act_milli;
+  }
+
 #ifdef CFG_GPS
 	if (cfg::gps_read && ((msSince(starttime_GPS) > SAMPLETIME_GPS_MS) || send_now)) {
 		debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + "GPS", DEBUG_MAX_INFO, 1);
@@ -4171,6 +4257,7 @@ void loop() {
 		display_values();
 	}
 #endif
+
 
 	if (send_now) {
 
@@ -4269,6 +4356,11 @@ void loop() {
 				sum_send_time += millis() - start_send;
 			}
 		}
+   
+    if (true) {
+      data += result_A0;
+    }
+       
 		if (cfg::bme280_read && (! bme280_init_failed)) {
 			data += result_BME280;
 			if (cfg::send2dusti) {
@@ -4343,6 +4435,9 @@ void loop() {
 		first_cycle = false;
 		count_sends += 1;
 	}
+
+
+ 
 	yield();
   
   #ifdef CFG_BLINK
@@ -4357,7 +4452,7 @@ void loop() {
     digitalWrite(LED_BUILTIN, LOW);
     #endif
 
-	  }
+	}
 
 }
 
