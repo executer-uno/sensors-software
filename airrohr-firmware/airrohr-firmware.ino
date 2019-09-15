@@ -545,7 +545,7 @@ uint8_t       A0_Cnt            = 0;       // number of measurements
 unsigned long last_A0_millis    = 0;       // Time of last measurement
 
 // Custom WDT
-#define OSWATCH_RESET_TIME 60
+#define OSWATCH_RESET_TIME 300
 
 static unsigned long WDT_last_loop;
 Ticker tickerOSWatch;
@@ -592,7 +592,7 @@ void ICACHE_RAM_ATTR osWatch(void) {
         Serial.println(F(""));
         Serial.println(F("Custom WDT fires. Reboot."));
 
-        ESP.restart();  // normal reboot 
+        ESP.restart();  // normal reboot
         //ESP.reset();  // hard reset
     }
 }
@@ -2654,7 +2654,7 @@ static String sensorBMP() {
   String s;
 
   debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_BMP180), DEBUG_MED_INFO, 1);
-
+    
   const auto p = bmp.readPressure();
   const auto t = bmp.readTemperature();
   if (isnan(p) || isnan(t)) {
@@ -3958,8 +3958,8 @@ void setup() {
 	readConfig();
  
   #ifdef CFG_BLINK
-  pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
-  digitalWrite(LED_BUILTIN, LOW);
+  pinMode(D0, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
+  digitalWrite(D0, LOW);
   #endif
 
   // Init custom WDT
@@ -4048,7 +4048,7 @@ void setup() {
 
 
   #ifdef CFG_BLINK
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(D0, HIGH);
   #endif
 
 }
@@ -4347,8 +4347,8 @@ void loop() {
 
     #ifdef CFG_BLINK
     // Highlight LED indicator during the data transmission
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, LOW);
+    //pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(D0, LOW);
     #endif
   
 		debug_out(F("Creating data string:"), DEBUG_MIN_INFO, 1);
@@ -4533,15 +4533,15 @@ void loop() {
 
       
   #ifdef CFG_BLINK
-    digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(D0, HIGH);
   #endif
     
 	if (sample_count % 50000 == 0) {
 	  stats("in loop");
 
     #ifdef CFG_BLINK
-    pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output  
-    digitalWrite(LED_BUILTIN, LOW);
+    //pinMode(D0, OUTPUT);     // Initialize the LED_BUILTIN pin as an output  
+    digitalWrite(D0, LOW);
     #endif
 
 	}
