@@ -169,6 +169,9 @@
 #include <assert.h>
 #include <HTTPSRedirect.h>
 
+// For Custom WDT
+#include <Ticker.h>
+
 #if defined(INTL_BG)
 #include "intl_bg.h"
 #elif defined(INTL_CZ)
@@ -541,6 +544,12 @@ double        last_value_A0_Avg = -9999.0; // unitialized value. Average
 uint8_t       A0_Cnt            = 0;       // number of measurements
 unsigned long last_A0_millis    = 0;       // Time of last measurement
 
+// Custom WDT
+#define OSWATCH_RESET_TIME 60
+
+static unsigned long WDT_last_loop;
+Ticker tickerOSWatch;
+
 
 template<typename T, std::size_t N> constexpr std::size_t array_num_elements(const T(&)[N]) {
 	return N;
@@ -553,6 +562,41 @@ template<typename T, std::size_t N> constexpr std::size_t capacity_null_terminat
 #define msSince(timestamp_before) (act_milli - (timestamp_before))
 
 const char data_first_part[] PROGMEM = "{\"software_version\": \"{v}\", \"sensordatavalues\":[";
+
+
+/*****************************************************************
+ * Heap state debug                                              *
+ *****************************************************************/
+void stats(const char* what) {
+  // we could use getFreeHeap() getMaxFreeBlockSize() and getHeapFragmentation()
+  // or all at once:
+  uint32_t free;
+  uint16_t max;
+  uint8_t frag;
+  ESP.getHeapStats(&free, &max, &frag);
+
+  Serial.printf("free: %5d - max: %5d - frag: %3d%% <- ", free, max, frag);
+  // %s requires a malloc that could fail, using println instead:
+  Serial.println(what);
+}
+
+
+/*****************************************************************
+ * Custom WDT interrupt                                          *
+ *****************************************************************/
+void ICACHE_RAM_ATTR osWatch(void) {
+    unsigned long t = millis();
+    unsigned long last_run = abs(t - WDT_last_loop);
+    if(last_run >= (OSWATCH_RESET_TIME * 1000)) {
+      // save the hit here to eeprom or to rtc memory if needed
+        Serial.println(F(""));
+        Serial.println(F("Custom WDT fires. Reboot."));
+
+        ESP.restart();  // normal reboot 
+        //ESP.reset();  // hard reset
+    }
+}
+
 
 /*****************************************************************
  * Debug output                                                  *
@@ -2136,6 +2180,8 @@ void wifiConfig() {
 		server.handleClient();
 		//wdt_reset(); // nodemcu is alive
 		yield();
+    WDT_last_loop = millis(); // Resets custom WDT
+
       //debug_out(F("yield() called from 2137"), DEBUG_MIN_INFO, 0);
       //debug_out("", DEBUG_MIN_INFO, 1);
 
@@ -3915,6 +3961,10 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
   digitalWrite(LED_BUILTIN, LOW);
   #endif
+
+  // Init custom WDT
+  WDT_last_loop = millis();
+  tickerOSWatch.attach_ms(((OSWATCH_RESET_TIME / 3) * 1000), osWatch);
   
 #ifdef CFG_LCD
 	init_display();
@@ -4000,6 +4050,7 @@ void setup() {
   #ifdef CFG_BLINK
   digitalWrite(LED_BUILTIN, HIGH);
   #endif
+
 }
 
 static void checkForceRestart() {
@@ -4478,6 +4529,9 @@ void loop() {
     //debug_out(F("yield() called from 4455"), DEBUG_MIN_INFO, 0);
     //debug_out("", DEBUG_MIN_INFO, 1);
 
+  WDT_last_loop = millis(); // Resets custom WDT
+
+      
   #ifdef CFG_BLINK
     digitalWrite(LED_BUILTIN, HIGH);
   #endif
@@ -4492,19 +4546,4 @@ void loop() {
 
 	}
 
-}
-
-
-
-void stats(const char* what) {
-  // we could use getFreeHeap() getMaxFreeBlockSize() and getHeapFragmentation()
-  // or all at once:
-  uint32_t free;
-  uint16_t max;
-  uint8_t frag;
-  ESP.getHeapStats(&free, &max, &frag);
-
-  Serial.printf("free: %5d - max: %5d - frag: %3d%% <- ", free, max, frag);
-  // %s requires a malloc that could fail, using println instead:
-  Serial.println(what);
 }
