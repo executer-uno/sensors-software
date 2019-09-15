@@ -892,6 +892,10 @@ String SDS_version_date() {
 			checksum_is = 0;
 		}
 		yield();
+      //debug_out(F("yield() called from 895"), DEBUG_MIN_INFO, 0);
+      //("", DEBUG_MIN_INFO, 1);
+
+
 	}
 
 	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(DBG_TXT_SDS011_VERSION_DATE), DEBUG_MED_INFO, 1);
@@ -2130,8 +2134,11 @@ void wifiConfig() {
 	while (((millis() - last_page_load) < cfg::time_for_wifi_config)) {
 		dnsServer.processNextRequest();
 		server.handleClient();
-		wdt_reset(); // nodemcu is alive
+		//wdt_reset(); // nodemcu is alive
 		yield();
+      //debug_out(F("yield() called from 2137"), DEBUG_MIN_INFO, 0);
+      //debug_out("", DEBUG_MIN_INFO, 1);
+
 	}
 
 	// half second to answer last requests
@@ -2140,6 +2147,9 @@ void wifiConfig() {
 		dnsServer.processNextRequest();
 		server.handleClient();
 		yield();
+      //debug_out(F("yield() called from 2147"), DEBUG_MIN_INFO, 0);
+      //debug_out("", DEBUG_MIN_INFO, 1);
+
 	}
 
 	WiFi.disconnect(true);
@@ -2288,7 +2298,7 @@ void sendData(const String& data, const int pin, const char* host, const int htt
 		int retries = 20;
 		while (client->connected() && !client->available()) {
 			delay(100);
-			wdt_reset();
+			//wdt_reset(); it is called implicitly inside delay() function https://www.sigmdel.ca/michel/program/esp8266/arduino/watchdogs_en.html
 			if (!--retries)
 				break;
 		}
@@ -2347,8 +2357,11 @@ void sendData(const String& data, const int pin, const char* host, const int htt
 	debug_out(F("End connecting to "), DEBUG_MIN_INFO, 0);
 	debug_out(host, DEBUG_MIN_INFO, 1);
 
-	wdt_reset(); // nodemcu is alive
+	//wdt_reset(); // nodemcu is alive // it is also in yield
 	yield();
+  //debug_out(F("yield() called from 2352"), DEBUG_MIN_INFO, 0);
+  //debug_out("", DEBUG_MIN_INFO, 1);
+
 }
 
 /*****************************************************************
@@ -2798,6 +2811,9 @@ String sensorSDS() {
 				checksum_is = 0;
 			}
 			yield();
+      //debug_out(F("yield() called from 2803"), DEBUG_MIN_INFO, 0);
+      //debug_out("", DEBUG_MIN_INFO, 1);
+
 		}
 
 	}
@@ -2970,6 +2986,9 @@ String sensorPMS() {
 				}
 			}
 			yield();
+      //debug_out(F("yield() called from 2977"), DEBUG_MIN_INFO, 0);
+      //debug_out("", DEBUG_MIN_INFO, 1);
+
 		}
 
 	}
@@ -3119,6 +3138,9 @@ String sensorHPM() {
 				}
 			}
 			yield();
+      //debug_out(F("yield() called from 3128"), DEBUG_MIN_INFO, 0);
+      //debug_out("", DEBUG_MIN_INFO, 1);
+
 		}
 
 	}
@@ -3618,6 +3640,9 @@ void display_values() {
 		lcd_1602_3f.print(display_lines[1]);
 	}
 	yield();
+  //debug_out(F("yield() called from 3629"), DEBUG_MIN_INFO, 0);
+  //debug_out("", DEBUG_MIN_INFO, 1);
+
 	next_display_count += 1;
 	next_display_millis = millis() + DISPLAY_UPDATE_INTERVAL_MS;
 }
@@ -3754,6 +3779,9 @@ static void powerOnTestSensors() {
 	}
 #endif
 
+  debug_out(F("Read A0 input..."), DEBUG_MIN_INFO, 1);
+  Serial.println(analogRead(A0));
+
 #ifdef CFG_BMP180
   if (cfg::bmp_read) {
     debug_out(F("Read BMP..."), DEBUG_MIN_INFO, 1);
@@ -3782,8 +3810,7 @@ static void powerOnTestSensors() {
 #endif
 
 
-  debug_out(F("Read A0 input..."), DEBUG_MIN_INFO, 1);
-  Serial.println(analogRead(A0));
+
 
 
 }
@@ -4046,7 +4073,9 @@ static unsigned long sendDataToOptionalApis(const String &data) {
         debug_out(F("Send to spreadsheet"), DEBUG_MIN_INFO, 1);
         start_send = millis();
         yield();
-        
+        //debug_out(F("yield() called from 4059"), DEBUG_MIN_INFO, 0);
+        //debug_out("", DEBUG_MIN_INFO, 1);
+
         // Connect to spreadsheet
         client = new HTTPSRedirect(httpsPort);
         client->setInsecure();  
@@ -4133,7 +4162,7 @@ void loop() {
 
 	sample_count++;
 
-	wdt_reset(); // nodemcu is alive
+	//wdt_reset(); // nodemcu is alive
 
 	if (last_micro != 0) {
 		unsigned long diff_micro = act_micro - last_micro;
@@ -4204,6 +4233,10 @@ void loop() {
     if (cfg::bmp_read && (! bmp_init_failed)) {
       debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP180), DEBUG_MAX_INFO, 1);
       result_BMP = sensorBMP();                       // getting temperature and pressure (optional)
+      
+      Serial.print("result_BMP = "); // debug BMP
+      Serial.println(result_BMP);
+      
     }
 #endif
 #ifdef CFG_BME280 
@@ -4282,6 +4315,9 @@ void loop() {
 
 		server.handleClient();
 		yield();
+    //debug_out(F("yield() called from 4296"), DEBUG_MIN_INFO, 0);
+    //debug_out("", DEBUG_MIN_INFO, 1);
+
 		server.stop();
 		const int HTTP_PORT_DUSTI = (cfg::ssl_dusti ? 443 : 80);
 		if (cfg::ppd_read) {
@@ -4439,7 +4475,9 @@ void loop() {
 
  
 	yield();
-  
+    //debug_out(F("yield() called from 4455"), DEBUG_MIN_INFO, 0);
+    //debug_out("", DEBUG_MIN_INFO, 1);
+
   #ifdef CFG_BLINK
     digitalWrite(LED_BUILTIN, HIGH);
   #endif
