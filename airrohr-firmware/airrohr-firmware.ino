@@ -4063,14 +4063,30 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 	unsigned long start_send = 0;
 	unsigned long sum_send_time = 0;
 
+
+    
 	if (cfg::send2madavi) {
+
+    #ifdef CFG_BLINK
+    digitalWrite(D0, HIGH);
+    delay(200);
+    digitalWrite(D0, LOW);
+    #endif
+    
 		debug_out(String(FPSTR(DBG_TXT_SENDING_TO)) + F("madavi.de: "), DEBUG_MIN_INFO, 1);
 		start_send = millis();
 		sendData(data, 0, HOST_MADAVI, (cfg::ssl_madavi ? 443 : 80), URL_MADAVI, true, "", FPSTR(TXT_CONTENT_TYPE_JSON));
 		sum_send_time += millis() - start_send;
 	}
-
+    
 	if (cfg::send2sensemap && (cfg::senseboxid[0] != '\0')) {
+
+    #ifdef CFG_BLINK
+    digitalWrite(D0, HIGH);
+    delay(200);
+    digitalWrite(D0, LOW);
+    #endif
+      
 		debug_out(String(FPSTR(DBG_TXT_SENDING_TO)) + F("opensensemap: "), DEBUG_MIN_INFO, 1);
 		start_send = millis();
 		String sensemap_path = URL_SENSEMAP;
@@ -4078,15 +4094,29 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 		sendData(data, 0, HOST_SENSEMAP, PORT_SENSEMAP, sensemap_path.c_str(), false, "", FPSTR(TXT_CONTENT_TYPE_JSON));
 		sum_send_time += millis() - start_send;
 	}
-
+    
 	if (cfg::send2fsapp) {
+
+    #ifdef CFG_BLINK
+    digitalWrite(D0, HIGH);
+    delay(200);
+    digitalWrite(D0, LOW);
+    #endif
+    
 		debug_out(String(FPSTR(DBG_TXT_SENDING_TO)) + F("Server FS App: "), DEBUG_MIN_INFO, 1);
 		start_send = millis();
 		sendData(data, 0, HOST_FSAPP, PORT_FSAPP, URL_FSAPP, false, "", FPSTR(TXT_CONTENT_TYPE_JSON));
 		sum_send_time += millis() - start_send;
 	}
-
+    
 	if (cfg::send2influx) {
+
+    #ifdef CFG_BLINK
+    digitalWrite(D0, HIGH);
+    delay(200);
+    digitalWrite(D0, LOW);
+    #endif
+  
 		debug_out(String(FPSTR(DBG_TXT_SENDING_TO)) + F("custom influx db: "), DEBUG_MIN_INFO, 1);
 		start_send = millis();
 		const String data_4_influxdb = create_influxdb_string(data);
@@ -4105,6 +4135,13 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 	}
 
 	if (cfg::send2custom) {
+
+    #ifdef CFG_BLINK
+    digitalWrite(D0, HIGH);
+    delay(200);
+    digitalWrite(D0, LOW);
+    #endif
+      
 		String data_4_custom = data;
 		data_4_custom.remove(0, 1);
 		data_4_custom = "{\"esp8266id\": \"" + String(esp_chipid) + "\", " + data_4_custom;
@@ -4116,7 +4153,13 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
 
   if (true) {
-    
+
+    #ifdef CFG_BLINK
+    digitalWrite(D0, HIGH);
+    delay(200);
+    digitalWrite(D0, LOW);
+    #endif
+        
         String data_4_custom = data;
         data_4_custom.remove(0, 1);
         data_4_custom = "{\"esp8266id\": \"" + String(esp_chipid) + "\", \"count_sends\": \"" + String(count_sends) + "\"," + data_4_custom;  
