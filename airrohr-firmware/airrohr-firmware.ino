@@ -104,30 +104,69 @@
 #define SOFTWARE_VERSION "NRZ-2019-01GSAI"
 
 // Config functionality
-// #define CFG_LCD        // !!!! That option not compatible with Google Spreadsheets
-#define CFG_DHT
-#define CFG_DALLAS
-#define CFG_GPS
-#define CFG_UPDATE
-#define CFG_PT_ADD
-#define CFG_BMP180
-#define CFG_BME280
-#define CFG_BLINK
-
+  #define CFG_LCD        // !!!! That option not compatible with Google Spreadsheets
+//  #define CFG_DHT
+  #define CFG_DALLAS
+  #define CFG_GPS
+//#define CFG_UPDATE
+  #define CFG_PT_ADD
+  #define CFG_BMP180
+  #define CFG_BME280
+//#define CFG_BLINK
+//#define CFG_PPD
+//#define CFG_GSHEET
+//#define CFG_AIn     // read analog input
 /*****************************************************************
  * Includes                                                      *
  *****************************************************************/
 #include <FS.h>                     // must be first
-#include <ESP8266WiFi.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
-#ifdef CFG_UPDATE
-#include <ESP8266httpUpdate.h>
+
+
+#ifdef ESP32
+  #include <esp_wifi.h>             // must be first
+
+  //#include <WiFi.h>
+
+  #include <WiFiClient.h>  
+  #include <WiFiClientSecure.h>
+  #include <WebServer.h>  
+  #include <ESPmDNS.h>
+  #ifdef CFG_UPDATE
+    #include <HTTPUpdate.h>
+  #endif
+
+  #include "SPIFFS.h"
+#else
+  #include <ESP8266WiFi.h>
+  #include <ESP8266WebServer.h>
+  #include <ESP8266mDNS.h>
+  #ifdef CFG_UPDATE
+    #include <ESP8266httpUpdate.h>
+  #endif  
+  //#include <WiFiClientSecure.h>
+  //#include <WiFiClientSecureBearSSL.h>  
 #endif
-//#include <WiFiClientSecure.h>
-//#include <WiFiClientSecureBearSSL.h>
-#include <SoftwareSerial.h>
+
+#include <DNSServer.h>
+
+
+
+#ifdef ESP32
+  // to use all three hardware serial ports we need to apply patch ( https://youtu.be/GwShqW39jlE ):
+  // C:\Users\E_CAD\AppData\Local\Arduino15\packages\esp32\hardware\esp32\1.0.3\cores\esp32\HardwareSerial.cpp
+  // Looks like it is already applyed in librarys
+  
+  #define RX1 PM_SERIAL_RX
+  #define TX1 PM_SERIAL_TX
+  
+  #define RX2 GPS_SERIAL_RX
+  #define TX2 GPS_SERIAL_TX
+
+#else
+  #include <SoftwareSerial.h>
+#endif
+
+
 
 #ifdef CFG_LCD
 #include "./oledfont.h"				// avoids including the default Arial font, needs to be included before SSD1306.h
@@ -165,9 +204,14 @@
 #endif
 
 #include <time.h>
-#include <coredecls.h>
+#ifndef ESP32
+  #include <coredecls.h>
+#endif
 #include <assert.h>
+
+#ifdef CFG_GSHEET
 #include <HTTPSRedirect.h>
+#endif
 
 // For Custom WDT
 #include <Ticker.h>
@@ -215,9 +259,11 @@ const unsigned long ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 const unsigned long PAUSE_BETWEEN_UPDATE_ATTEMPTS_MS = ONE_DAY_IN_MS;        // check for firmware updates once a day
 const unsigned long DURATION_BEFORE_FORCED_RESTART_MS = ONE_DAY_IN_MS * 28;  // force a reboot every ~4 weeks
 
+#ifdef CFG_GSHEET
 const char* host = "script.google.com";
 const int httpsPort = 443;
 const char* fingerprint = "";
+#endif
 
 /******************************************************************
  * The variables inside the cfg namespace are persistent          *
@@ -338,14 +384,19 @@ bool bmp_init_failed = false;
 bool bmp280_init_failed = false;
 bool bme280_init_failed = false;
 
-ESP8266WebServer server(80);
+#ifdef ESP32
+  WebServer server(80);
+#else
+  ESP8266WebServer server(80);
+#endif
+ 
 int TimeZone = 1;
 
 #ifdef CFG_LCD
 /*****************************************************************
  * Display definitions                                           *
  *****************************************************************/
-SSD1306 display(0x3c, I2C_PIN_SDA, I2C_PIN_SCL);
+SSD1306 display(0x3c, I2C_PIN_SDA, I2C_PIN_SCL); // OLED_ADDRESS
 SH1106 display_sh1106(0x3c, I2C_PIN_SDA, I2C_PIN_SCL);
 LiquidCrystal_I2C lcd_1602_27(0x27, 16, 2);
 LiquidCrystal_I2C lcd_1602_3f(0x3F, 16, 2);
@@ -355,8 +406,13 @@ LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
 /*****************************************************************
  * SDS011 declarations                                           *
  *****************************************************************/
-SoftwareSerial serialSDS(PM_SERIAL_RX, PM_SERIAL_TX, false, 128);
-SoftwareSerial serialGPS(GPS_SERIAL_RX, GPS_SERIAL_TX, false, 512);
+#ifdef ESP32
+  HardwareSerial serialSDS(1);
+  HardwareSerial serialGPS(2);
+#else
+  SoftwareSerial serialSDS(PM_SERIAL_RX, PM_SERIAL_TX, false, 128);
+  SoftwareSerial serialGPS(GPS_SERIAL_RX, GPS_SERIAL_TX, false, 512);
+#endif
 
 #ifdef CFG_DHT
 /*****************************************************************
@@ -527,22 +583,26 @@ struct struct_wifiInfo {
 struct struct_wifiInfo *wifiInfo;
 uint8_t count_wifiInfo;
 
-// For google spreadsheets:
-String url = String("/macros/s/") + GScriptId + "/exec?value=Hello";  // Write to Google Spreadsheet
-String url2 = String("/macros/s/") + GScriptId + "/exec?cal";         // Fetch Google Calendar events for 1 week ahead
-String url3 = String("/macros/s/") + GScriptId + "/exec?read";        // Read from Google Spreadsheet
-String payload_base =  "{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", \"values\": ";
-String payload = "";
+#ifdef CFG_GSHEET
+  // For google spreadsheets:
+  String url = String("/macros/s/") + GScriptId + "/exec?value=Hello";  // Write to Google Spreadsheet
+  String url2 = String("/macros/s/") + GScriptId + "/exec?cal";         // Fetch Google Calendar events for 1 week ahead
+  String url3 = String("/macros/s/") + GScriptId + "/exec?read";        // Read from Google Spreadsheet
+  String payload_base =  "{\"command\": \"appendRow\", \"sheet_name\": \"DATA\", \"values\": ";
+  String payload = "";
+  
+  HTTPSRedirect* client = nullptr;
+  static unsigned long error_count = 0; // Errors counter not resetable until sucess data push
+#endif
 
-HTTPSRedirect* client = nullptr;
-static unsigned long error_count = 0; // Errors counter not resetable until sucess data push
-
+#ifdef CFG_AIn
 // For sensor on analog input
 double        last_value_A0_Max = -9999.0; // unitialized value. Maximum
 double        last_value_A0_Min = -9999.0; // unitialized value. Minimum
 double        last_value_A0_Avg = -9999.0; // unitialized value. Average
 uint8_t       A0_Cnt            = 0;       // number of measurements
 unsigned long last_A0_millis    = 0;       // Time of last measurement
+#endif
 
 // Custom WDT
 #define OSWATCH_RESET_TIME 300
@@ -563,7 +623,7 @@ template<typename T, std::size_t N> constexpr std::size_t capacity_null_terminat
 
 const char data_first_part[] PROGMEM = "{\"software_version\": \"{v}\", \"sensordatavalues\":[";
 
-
+#ifndef ESP32
 /*****************************************************************
  * Heap state debug                                              *
  *****************************************************************/
@@ -579,7 +639,7 @@ void stats(const char* what) {
   // %s requires a malloc that could fail, using println instead:
   Serial.println(what);
 }
-
+#endif
 
 /*****************************************************************
  * Custom WDT interrupt                                          *
@@ -1408,7 +1468,11 @@ static bool webserver_request_auth() {
 	return true;
 }
 
+#if defined(ESP32)
+static void sendHttpRedirect(WebServer &httpServer) {
+#else
 static void sendHttpRedirect(ESP8266WebServer &httpServer) {
+#endif
 	httpServer.sendHeader(F("Location"), F("http://192.168.4.1/config"));
 	httpServer.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), "");
 }
@@ -1793,7 +1857,11 @@ void webserver_wifi() {
 				continue;
 			}
 			// Print SSID and RSSI for each network found
+      #ifndef ESP32
 			page_content += wlan_ssid_to_table_row(wifiInfo[indices[i]].ssid, ((wifiInfo[indices[i]].encryptionType == ENC_TYPE_NONE) ? " " : u8"🔒"), wifiInfo[indices[i]].RSSI);
+      #else
+      page_content += wlan_ssid_to_table_row(wifiInfo[indices[i]].ssid, ((wifiInfo[indices[i]].encryptionType == WIFI_AUTH_OPEN) ? " " : u8"🔒"), wifiInfo[indices[i]].RSSI);
+      #endif
 		}
 		page_content += FPSTR(TABLE_TAG_CLOSE_BR);
 		page_content += FPSTR(BR_TAG);
@@ -1886,6 +1954,7 @@ void webserver_values() {
 			page_content += table_row_from_value("GPS", FPSTR(INTL_TIME), last_value_GPS_time, "");
 		}
 
+#ifdef CFG_AIn
     // Analog input values
     if (A0_Cnt>0) {
       page_content += FPSTR(EMPTY_ROW);
@@ -1894,6 +1963,7 @@ void webserver_values() {
       page_content += table_row_from_value(F("Analog avg"),"", check_display_value(( last_value_A0_Avg/A0_Cnt ), -9999.0, 1, 0), "");
 
     }
+#endif
 
 		page_content += FPSTR(EMPTY_ROW);
 		page_content += table_row_from_value(***REMOVED***, FPSTR(INTL_SIGNAL_STRENGTH),  String(WiFi.RSSI()), "dBm");
@@ -2119,6 +2189,7 @@ void setup_webserver() {
 //	debug_out(IPAddress2String(WiFi.localIP()), DEBUG_MIN_INFO, 1);
 	debug_out(WiFi.localIP().toString(), DEBUG_MIN_INFO, 1);
 	server.begin();
+  debug_out(F("HTTP server started... "), DEBUG_MIN_INFO, 0);
 }
 
 static int selectChannelForAp(struct struct_wifiInfo *info, int count) {
@@ -2159,7 +2230,12 @@ void wifiConfig() {
 	for (int i = 0; i < count_wifiInfo; i++) {
 		uint8_t* BSSID;
 		String SSID;
+    #ifdef ESP32
+    BSSID = WiFi.BSSID(i);
+    SSID  = WiFi.SSID(i);
+    #else
 		WiFi.getNetworkInfo(i, SSID, wifiInfo[i].encryptionType, wifiInfo[i].RSSI, BSSID, wifiInfo[i].channel, wifiInfo[i].isHidden);
+    #endif
 		SSID.toCharArray(wifiInfo[i].ssid, 35);
 	}
 
@@ -2267,10 +2343,22 @@ static void waitForWifiToConnect(int maxRetries) {
 void connectWifi() {
 	debug_out(String(WiFi.status()), DEBUG_MIN_INFO, 1);
 	WiFi.disconnect();
+  #ifndef ESP32
 	WiFi.setOutputPower(20.5);
-	WiFi.setPhyMode(WIFI_PHY_MODE_11N);
-	WiFi.mode(WIFI_STA);
+  WiFi.setPhyMode(WIFI_PHY_MODE_11N);
+  WiFi.mode(WIFI_STA);
+  #else
+  WiFi.mode(WIFI_STA);
+  //check_protocol();
+  WiFi.setTxPower(WIFI_POWER_5dBm);
+  //ESP_ERROR_CHECK( esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11N) );
+  //check_protocol();
+  #endif
+	  
 	WiFi.begin(cfg::wlanssid, cfg::wlanpwd); // Start WiFI
+#ifdef ESP32
+  //check_protocol();
+#endif
 
 	debug_out(F("Connecting to "), DEBUG_MIN_INFO, 0);
 	debug_out(cfg::wlanssid, DEBUG_MIN_INFO, 1);
@@ -2609,6 +2697,7 @@ static String sensorBMP280() {
 }
 #endif
 
+#ifdef CFG_AIn
 /*****************************************************************
  * read sensor values on AnalogInput                             *
  *****************************************************************/
@@ -2645,6 +2734,7 @@ static String sensorA0() {
 
   return s;
 }
+#endif
 
 #ifdef CFG_BMP180
 /*****************************************************************
@@ -3224,6 +3314,7 @@ String sensorHPM() {
 	return s;
 }
 
+#ifdef CFG_PPD
 /*****************************************************************
  * read PPD42NS sensor values                                    *
  *****************************************************************/
@@ -3309,6 +3400,7 @@ String sensorPPD() {
 
 	return s;
 }
+#endif
 
 #ifdef CFG_GPS
 /*****************************************************************
@@ -3399,7 +3491,7 @@ String sensorGPS() {
 	}
 
 	if ( gps.charsProcessed() < 10) {
-		debug_out(F("No GPS data received: check wiring"), DEBUG_ERROR, 1);
+		debug_out(F(": check wiring"), DEBUG_ERROR, 1);
 	}
 
 	debug_out(String(FPSTR(DBG_TXT_END_READING)) + "GPS", DEBUG_MED_INFO, 1);
@@ -3423,14 +3515,24 @@ static void autoUpdate() {
 		const String SDS_version = cfg::sds_read ? SDS_version_date() : "";
 		display_debug(F("Looking for"), F("OTA update"));
 		last_update_attempt = millis();
-		const HTTPUpdateResult ret = ESPhttpUpdate.update(UPDATE_HOST, UPDATE_PORT, UPDATE_URL,
+   #ifdef ESP32
+      const HTTPUpdateResult ret = httpUpdate.update(client, UPDATE_HOST, UPDATE_PORT, UPDATE_URL,
+   #else
+      const HTTPUpdateResult ret = ESPhttpUpdate.update(UPDATE_HOST, UPDATE_PORT, UPDATE_URL,
+   #endif
+   
 									 SOFTWARE_VERSION + String(" ") + esp_chipid + String(" ") + SDS_version + String(" ") +
 									 String(cfg::current_lang) + String(" ") + String(INTL_LANG) + String(" ") +
 									 String(cfg::use_beta ? "BETA" : ""));
+                   
 		switch(ret) {
 		case HTTP_UPDATE_FAILED:
 			debug_out(String(FPSTR(DBG_TXT_UPDATE)) + FPSTR(DBG_TXT_UPDATE_FAILED), DEBUG_ERROR, 0);
-			debug_out(ESPhttpUpdate.getLastErrorString().c_str(), DEBUG_ERROR, 1);
+      #ifdef ESP32
+		    debug_out(httpUpdate.getLastErrorString().c_str(), DEBUG_ERROR, 1);
+      #else
+        debug_out(ESPhttpUpdate.getLastErrorString().c_str(), DEBUG_ERROR, 1);
+      #endif
 			display_debug(FPSTR(DBG_TXT_UPDATE), FPSTR(DBG_TXT_UPDATE_FAILED));
 			break;
 		case HTTP_UPDATE_NO_UPDATES:
@@ -3765,11 +3867,14 @@ bool initBME280(char addr) {
 #endif
 
 static void powerOnTestSensors() {
+  
+#ifdef CFG_PPD
 	if (cfg::ppd_read) {
 		pinMode(PPD_PIN_PM1, INPUT_PULLUP);                 // Listen at the designated PIN
 		pinMode(PPD_PIN_PM2, INPUT_PULLUP);                 // Listen at the designated PIN
 		debug_out(F("Read PPD..."), DEBUG_MIN_INFO, 1);
 	}
+#endif
 
 	if (cfg::sds_read) {
 		debug_out(F("Read SDS..."), DEBUG_MIN_INFO, 1);
@@ -3825,8 +3930,10 @@ static void powerOnTestSensors() {
 	}
 #endif
 
+#ifdef CFG_AIn
   debug_out(F("Read A0 input..."), DEBUG_MIN_INFO, 1);
   Serial.println(analogRead(A0));
+#endif
 
 #ifdef CFG_BMP180
   if (cfg::bmp_read) {
@@ -3856,9 +3963,7 @@ static void powerOnTestSensors() {
 #endif
 
 
-
-
-
+    debug_out(F("powerOnTestSensors done"), DEBUG_MIN_INFO, 1);
 }
 
 static void logEnabledAPIs() {
@@ -3915,7 +4020,9 @@ static bool acquireNetworkTime() {
 	time_t now = time(nullptr);
 	debug_out(ctime(&now), DEBUG_MIN_INFO, 1);
 	debug_out(F("NTP.org:"),DEBUG_MIN_INFO,1);
-	settimeofday_cb(time_is_set);
+  #ifndef ESP32
+	  settimeofday_cb(time_is_set);
+  #endif
 	configTime(8 * 3600, 0, "pool.ntp.org");
 	while (retryCount++ < 20) {
 		// later than 2000/01/01:00:00:00
@@ -3943,17 +4050,30 @@ static bool acquireNetworkTime() {
 	return false;
 }
 
+
+
 /*****************************************************************
  * The Setup                                                     *
  *****************************************************************/
 void setup() {
-
+  #ifdef ESP32
+  Serial.begin(115200); 
+  #else
 	Serial.begin(74880);					// Output to Serial at 9600 baud
+  #endif
   #if defined(BMP180) || defined(BME280) || defined(CFG_PT_ADD)
 	Wire.begin(I2C_PIN_SDA, I2C_PIN_SCL);
   #endif
-  
-	esp_chipid = String(ESP.getChipId());
+
+  #ifndef ESP32
+	  esp_chipid = String(ESP.getChipId());
+  #else
+    char ssid[15]; //Create a Unique AP from MAC address
+    uint64_t chipid=ESP.getEfuseMac();//The chip ID is essentially its MAC address(length: 6 bytes).
+    uint16_t chip = (uint16_t)(chipid>>32);
+    snprintf(ssid,15,"%04X",chip);
+    esp_chipid = String(ssid);
+  #endif
 	cfg::initNonTrivials(esp_chipid.c_str());
 	readConfig();
  
@@ -3970,8 +4090,9 @@ void setup() {
 	init_display();
 	init_lcd();
 #endif
-
-	setup_webserver();
+  #ifndef ESP32
+  setup_webserver();
+  #endif
 	display_debug(F("Connecting to"), String(cfg::wlanssid));
 	connectWifi();
 	got_ntp = acquireNetworkTime();
@@ -3981,17 +4102,36 @@ void setup() {
 	autoUpdate();
 #endif
 	create_basic_auth_strings();
-	serialSDS.begin(9600);
+  
+  #ifdef ESP32
+  if(WiFi.status() == WL_CONNECTED) {
+    debug_out(F("\nWiFi connected - start webserwer"), DEBUG_MIN_INFO, 0);
+    setup_webserver();
+  }
+  #endif
+
+  #ifndef ESP32
+	  serialSDS.begin(9600);
+  #else
+    serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX);
+  #endif
 	debug_out(F("\nChipId: "), DEBUG_MIN_INFO, 0);
 	debug_out(esp_chipid, DEBUG_MIN_INFO, 1);
 
 	powerOnTestSensors();
-
+  yield();
 	if (cfg::gps_read) {
-		serialGPS.begin(9600);
-		debug_out(F("Read GPS..."), DEBUG_MIN_INFO, 1);
+    debug_out(F("Read GPS..."), DEBUG_MIN_INFO, 1);
+    #ifndef ESP32
+ 		  serialGPS.begin(9600);
+    #else
+      serialGPS.begin(9600, SERIAL_8N1, GPS_SERIAL_RX, GPS_SERIAL_TX);
+    #endif
+    debug_out(F("Port configured."), DEBUG_MIN_INFO, 1);
 		disable_unneeded_nmea();
 	}
+  debug_out(F("Read GPS done."), DEBUG_MIN_INFO, 1);
+
 
 	logEnabledAPIs();
 	logEnabledDisplays();
@@ -4013,6 +4153,7 @@ void setup() {
 	starttime_SDS = starttime;
 	next_display_millis = starttime + DISPLAY_UPDATE_INTERVAL_MS;
 
+#ifdef CFG_GSHEET
   // For google spreadsheets
   // Use HTTPSRedirect class to create a new TLS connection
   client = new HTTPSRedirect(httpsPort);
@@ -4045,6 +4186,7 @@ void setup() {
   // delete HTTPSRedirect object
   delete client;
   client = nullptr;
+#endif
 
 
   #ifdef CFG_BLINK
@@ -4151,7 +4293,7 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 		sum_send_time += millis() - start_send;
 	}
 
-
+#ifdef CFG_GSHEET
   if (true) {
 
     #ifdef CFG_BLINK
@@ -4226,6 +4368,7 @@ static unsigned long sendDataToOptionalApis(const String &data) {
         Serial.println(" ms.");        
         sum_send_time += millis() - start_send;
   }
+#endif
 
 	return sum_send_time;
 }
@@ -4269,10 +4412,12 @@ void loop() {
 	}
 	last_micro = act_micro;
 
+#ifdef CFG_PPD
 	if (cfg::ppd_read) {
 		debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + "PPD", DEBUG_MAX_INFO, 1);
 		result_PPD = sensorPPD();
 	}
+#endif
 
 	if ((msSince(starttime_SDS) > SAMPLETIME_SDS_MS) || send_now) {
 		if (cfg::sds_read) {
@@ -4317,11 +4462,12 @@ void loop() {
 		}
 #endif
 
+#ifdef CFG_AIn
     if (A0_Cnt) {
       debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + F("A0 input"), DEBUG_MAX_INFO, 1);
       result_A0 = sensorA0();                 // getting analog input value
     }
-
+#endif
     
 #ifdef CFG_BMP180
     if (cfg::bmp_read && (! bmp_init_failed)) {
@@ -4349,6 +4495,7 @@ void loop() {
  
 	}
 
+#ifdef CFG_AIn
   // Analog input reading
   if (msSince(last_A0_millis) > 1000) {
     const auto AI = analogRead(A0)*1.0; // to float format
@@ -4369,6 +4516,7 @@ void loop() {
 
     last_A0_millis = act_milli;
   }
+#endif
 
 #ifdef CFG_GPS
 	if (cfg::gps_read && ((msSince(starttime_GPS) > SAMPLETIME_GPS_MS) || send_now)) {
@@ -4414,6 +4562,7 @@ void loop() {
 
 		server.stop();
 		const int HTTP_PORT_DUSTI = (cfg::ssl_dusti ? 443 : 80);
+#ifdef CFG_PPD    
 		if (cfg::ppd_read) {
 			data += result_PPD;
 			if (cfg::send2dusti) {
@@ -4423,6 +4572,7 @@ void loop() {
 				sum_send_time += millis() - start_send;
 			}
 		}
+#endif
 		if (cfg::sds_read) {
 			data += result_SDS;
 			if (cfg::send2dusti) {
@@ -4580,8 +4730,11 @@ void loop() {
   #endif
     
 	if (sample_count % 50000 == 0) {
+  
+  #ifndef ESP32
 	  stats("in loop");
-
+  #endif
+  
     #ifdef CFG_BLINK
     //pinMode(D0, OUTPUT);     // Initialize the LED_BUILTIN pin as an output  
     digitalWrite(D0, LOW);

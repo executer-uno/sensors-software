@@ -2,27 +2,27 @@
 #define CURRENT_LANG INTL_LANG
 
 // Wifi config
-#define WLANSSID "Freifunk-disabled"
-#define WLANPWD ""
+#define WLANSSID ***REMOVED***        //***REMOVED***
+#define WLANPWD  ***REMOVED***  //***REMOVED***
 
 // BasicAuth config
 #define WWW_USERNAME "admin"
 #define WWW_PASSWORD "feinstaub"
 #define WWW_BASICAUTH_ENABLED 0
 
-
+#ifdef CFG_GSHEET
   // Replace with your own script id to make server side changes
   const char *GScriptId = ***REMOVED***;
-
+#endif
   
 // Sensor Wifi config (config mode)
-#define FS_SSID ""
-#define FS_PWD ""
+#define FS_SSID ""//***REMOVED***
+#define FS_PWD  ""//***REMOVED***
 
 // Wohin gehen die Daten?
-#define SEND2DUSTI 1
+#define SEND2DUSTI 0
 #define SSL_DUSTI 0
-#define SEND2MADAVI 1
+#define SEND2MADAVI 0
 #define SSL_MADAVI 0
 #define SEND2SENSEMAP 0
 #define SEND2FSAPP 0
@@ -56,14 +56,16 @@
 #define PWD_INFLUX ""
 
 // define pins for I2C
-#define I2C_PIN_SCL D4
-#define I2C_PIN_SDA D3
+#if defined(ESP8266)
+  #define I2C_PIN_SCL D4
+  #define I2C_PIN_SDA D3
+#else
+  #define I2C_PIN_SCL OLED_SCL
+  #define I2C_PIN_SDA OLED_SDA
+#endif
 
 // define pin for one wire sensors
 #if defined(ESP8266)
-#define ONEWIRE_PIN D7
-#endif
-#if defined(ARDUINO_SAMD_ZERO)
 #define ONEWIRE_PIN D7
 #endif
 
@@ -83,8 +85,20 @@
 #define GPS_SERIAL_TX D6
 #endif
 
+#if defined(ESP32)
+#define PM_SERIAL_RX  36
+#define PM_SERIAL_TX    13
+
+#define GPS_SERIAL_RX 35
+#define GPS_SERIAL_TX   14
+
+#define ONEWIRE_PIN 12
+
+#endif
+
+
 // DHT22, temperature, humidity
-#define DHT_READ 1
+#define DHT_READ 0
 #define DHT_TYPE DHT22
 #define DHT_API_PIN 7
 
@@ -92,12 +106,14 @@
 #define HTU21D_READ 0
 #define HTU21D_API_PIN 7
 
-// PPD42NS, der günstigere der beiden Feinstaubsensoren
 #define PPD_READ 0
+#ifdef CFG_PPD
+// PPD42NS, der günstigere der beiden Feinstaubsensoren
 #define PPD_API_PIN 5
-#if defined(ARDUINO_SAMD_ZERO) || defined(ESP8266)
-#define PPD_PIN_PM1 D6
-#define PPD_PIN_PM2 D5
+  #if defined(ARDUINO_SAMD_ZERO) || defined(ESP8266)
+  #define PPD_PIN_PM1 D6
+  #define PPD_PIN_PM2 D5
+  #endif
 #endif
 
 // SDS011, der etwas teuerere Feinstaubsensor
@@ -130,17 +146,17 @@
 
 
 // GPS, bevorzugt Neo-6M
-#define GPS_READ 0
+#define GPS_READ 1
 #define GPS_API_PIN 9
 
 // automatic firmware updates
-#define AUTO_UPDATE 1
+#define AUTO_UPDATE 0
 
 // use beta firmware
 #define USE_BETA 0
 
 // OLED Display SSD1306 angeschlossen?
-#define HAS_DISPLAY 0
+#define HAS_DISPLAY 1
 
 // OLED Display SH1106 angeschlossen?
 #define HAS_SH1106 0
@@ -213,4 +229,26 @@ static const uint16_t suites[] PROGMEM = {
 #define D6 12   // TX GPS
 #define D7 13   // OneWire
 #define D8 15
+#endif
+
+#if defined(ESP32)
+//GPIO Pins
+#include "SSD1306Wire.h" 
+#define OLED_CLASS_OBJ  SSD1306Wire
+#define OLED_ADDRESS    0x3C
+#define OLED_SDA    21
+#define OLED_SCL    22
+#define OLED_RST    -1
+
+#define CONFIG_MOSI 27
+#define CONFIG_MISO 19
+#define CONFIG_CLK  5
+#define CONFIG_NSS  18
+#define CONFIG_RST  23
+#define CONFIG_DIO0 26
+
+#define SDCARD_MOSI 15
+#define SDCARD_MISO 2
+#define SDCARD_SCLK 14
+#define SDCARD_CS   13
 #endif
