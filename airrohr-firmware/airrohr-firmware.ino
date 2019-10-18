@@ -162,6 +162,10 @@
   #define RX2 GPS_SERIAL_RX
   #define TX2 GPS_SERIAL_TX
 
+  //https://github.com/plerup/espsoftwareserial ESP32 Software serial:
+  #include "SoftwareSerial.h"
+
+
 #else
   #include <SoftwareSerial.h>
 #endif
@@ -407,7 +411,9 @@ LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
  * SDS011 declarations                                           *
  *****************************************************************/
 #ifdef ESP32
-  HardwareSerial serialSDS(1);
+  //HardwareSerial serialSDS(1);
+  SoftwareSerial serialSDS;  
+
   HardwareSerial serialGPS(2);
 #else
   SoftwareSerial serialSDS(PM_SERIAL_RX, PM_SERIAL_TX, false, 128);
@@ -4113,7 +4119,8 @@ void setup() {
   #ifndef ESP32
 	  serialSDS.begin(9600);
   #else
-    serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX);
+    // serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX); // ESP32 HW UART
+    serialSDS.begin(9600, PM_SERIAL_RX, PM_SERIAL_TX, SWSERIAL_8N1, false, 256 ); // for SW UART
   #endif
 	debug_out(F("\nChipId: "), DEBUG_MIN_INFO, 0);
 	debug_out(esp_chipid, DEBUG_MIN_INFO, 1);
