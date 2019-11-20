@@ -2,8 +2,12 @@
 #define CURRENT_LANG INTL_LANG
 
 // Wifi config
-#define WLANSSID ***REMOVED***        //***REMOVED***
-#define WLANPWD  ***REMOVED***  //***REMOVED***
+#define WLANSSID   ***REMOVED***     
+#define WLANPWD    ***REMOVED***   
+
+//#define WLANSSID   ***REMOVED***
+//#define WLANPWD    ***REMOVED***
+
 
 // BasicAuth config
 #define WWW_USERNAME "admin"
@@ -86,11 +90,15 @@
 #endif
 
 #if defined(ESP32)
-#define PM_SERIAL_RX  36
-#define PM_SERIAL_TX    13
+//#define PM_SERIAL_RX  23 //tested for SW UART
+//#define PM_SERIAL_TX  13 //tested for SW UART
 
-#define GPS_SERIAL_RX 35
-#define GPS_SERIAL_TX   14
+#define PM_SERIAL_RX  32
+#define PM_SERIAL_TX  33
+
+
+#define GPS_SERIAL_RX 35 //tested for HW UART
+#define GPS_SERIAL_TX 14 //tested for HW UART
 
 #define ONEWIRE_PIN 12
 
@@ -129,7 +137,7 @@
 #define HPM_API_PIN 1
 
 // BMP180, temperature, pressure
-#define BMP_READ 0
+#define BMP_READ 1
 #define BMP_API_PIN 3
 
 // BMP280, temperature, pressure
@@ -146,7 +154,7 @@
 
 
 // GPS, bevorzugt Neo-6M
-#define GPS_READ 1
+#define GPS_READ 0
 #define GPS_API_PIN 9
 
 // automatic firmware updates

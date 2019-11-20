@@ -156,11 +156,11 @@
   // C:\Users\E_CAD\AppData\Local\Arduino15\packages\esp32\hardware\esp32\1.0.3\cores\esp32\HardwareSerial.cpp
   // Looks like it is already applyed in librarys
   
-  #define RX1 PM_SERIAL_RX
-  #define TX1 PM_SERIAL_TX
+  //#define RX1 PM_SERIAL_RX
+  //#define TX1 PM_SERIAL_TX
   
-  #define RX2 GPS_SERIAL_RX
-  #define TX2 GPS_SERIAL_TX
+  //#define RX2 GPS_SERIAL_RX
+  //#define TX2 GPS_SERIAL_TX
 
   //https://github.com/plerup/espsoftwareserial ESP32 Software serial:
   #include "SoftwareSerial.h"
@@ -338,7 +338,7 @@ namespace cfg {
 	char url_influx[100] = URL_INFLUX;
 
 	unsigned long time_for_wifi_config = 600000;
-	unsigned long sending_intervall_ms = 145000;
+	unsigned long sending_intervall_ms = 30000;   //145000;
 
 	void initNonTrivials(const char* id) {
 		strcpy(cfg::current_lang, CURRENT_LANG);
@@ -411,8 +411,8 @@ LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
  * SDS011 declarations                                           *
  *****************************************************************/
 #ifdef ESP32
-  //HardwareSerial serialSDS(1);
-  SoftwareSerial serialSDS;  
+  HardwareSerial serialSDS(1);
+  //SoftwareSerial serialSDS;  
 
   HardwareSerial serialGPS(2);
 #else
@@ -3712,11 +3712,11 @@ void display_values() {
 			display.clear();
 			display.displayOn();
 			display.setTextAlignment(TEXT_ALIGN_CENTER);
-			display.drawString(64, 1, display_header);
+			display.drawString(64, 0, display_header);    // one pixel up
 			display.setTextAlignment(TEXT_ALIGN_LEFT);
-			display.drawString(0, 16, display_lines[0]);
-			display.drawString(0, 28, display_lines[1]);
-			display.drawString(0, 40, display_lines[2]);
+			display.drawString(0, 13, display_lines[0]);  // up to three pixels (display with two colour fields with small gap between)
+			display.drawString(0, 25, display_lines[1]);
+			display.drawString(0, 37, display_lines[2]);
 			display.setTextAlignment(TEXT_ALIGN_CENTER);
 			display.drawString(64, 52, displayGenerateFooter(screen_count));
 			display.display();
@@ -4117,9 +4117,10 @@ void setup() {
   #endif
 
   #ifndef ESP32
-	  serialSDS.begin(9600);
+	  //serialSDS.begin(9600);
+    serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX);
   #else
-    // serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX); // ESP32 HW UART
+    //serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX); // ESP32 HW UART
     serialSDS.begin(9600, PM_SERIAL_RX, PM_SERIAL_TX, SWSERIAL_8N1, false, 256 ); // for SW UART
   #endif
 	debug_out(F("\nChipId: "), DEBUG_MIN_INFO, 0);
