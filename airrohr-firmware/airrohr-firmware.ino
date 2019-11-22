@@ -100,6 +100,14 @@
  * Globale Variablen verwenden 37160 Bytes (45%) des dynamischen Speichers, 44760 Bytes für lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  ************************************************************************/
+
+/************************************************************************
+ * Google Spreadsheds to store online measurements:
+ * https://voltiq.ru/post-data-to-google-sheets-with-esp8266/
+ ************************************************************************/
+
+
+ 
 // increment on change 
 #define SOFTWARE_VERSION "NRZ-2019-01GSAI"
 
@@ -114,7 +122,7 @@
   #define CFG_BME280
 //#define CFG_BLINK
 //#define CFG_PPD
-//#define CFG_GSHEET
+  #define CFG_GSHEET
 //#define CFG_AIn     // read analog input
 /*****************************************************************
  * Includes                                                      *
@@ -4072,16 +4080,16 @@ void setup() {
   #if defined(BMP180) || defined(BME280) || defined(CFG_PT_ADD)
 	Wire.begin(I2C_PIN_SDA, I2C_PIN_SCL);
   #endif
-
-  #ifndef ESP32
-	  esp_chipid = String(ESP.getChipId());
-  #else
+  
     char ssid[15]; //Create a Unique AP from MAC address
     uint64_t chipid=ESP.getEfuseMac();//The chip ID is essentially its MAC address(length: 6 bytes).
-    uint16_t chip = (uint16_t)(chipid>>32);
-    snprintf(ssid,15,"%04X",chip);
-    esp_chipid = String(ssid);
-  #endif
+    uint16_t chiph = (uint16_t)(chipid>>32);  //High 2 bytes
+    uint32_t chipl = (uint32_t)(chipid);      //Low  4 bytes
+    
+    snprintf(ssid,15,"%04X", chiph);
+    snprintf(ssid+4,15,"%08X", chipl);
+    esp_chipid = String(ssid);      //50E1F1BF713C
+
 	cfg::initNonTrivials(esp_chipid.c_str());
 	readConfig();
  
@@ -4169,7 +4177,7 @@ void setup() {
   // For google spreadsheets
   // Use HTTPSRedirect class to create a new TLS connection
   client = new HTTPSRedirect(httpsPort);
-  client->setInsecure();  
+  //client->setInsecure();  
   client->setPrintResponseBody(false);
   client->setContentTypeHeader("application/json");
   Serial.print("Connecting to ");
@@ -4326,7 +4334,7 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
         // Connect to spreadsheet
         client = new HTTPSRedirect(httpsPort);
-        client->setInsecure();  
+        //client->setInsecure();  
         client->setPrintResponseBody(false);
         client->setContentTypeHeader("application/json");
 
