@@ -90,17 +90,18 @@
 #endif
 
 #if defined(ESP32)
-//#define PM_SERIAL_RX  23 //tested for SW UART
-//#define PM_SERIAL_TX  13 //tested for SW UART
 
-#define PM_SERIAL_RX  32
-#define PM_SERIAL_TX  33
+  #define PM_SERIAL_RX    32
+  #define PM_SERIAL_TX    33
+  
+  #define PM2_SERIAL_RX   25
+  #define PM2_SERIAL_TX   26
+  
+  #define GPS_SERIAL_RX   16 
+  #define GPS_SERIAL_TX   17
 
-
-#define GPS_SERIAL_RX 35 //tested for HW UART
-#define GPS_SERIAL_TX 14 //tested for HW UART
-
-#define ONEWIRE_PIN 12
+  
+  #define ONEWIRE_PIN     12
 
 #endif
 
@@ -154,7 +155,7 @@
 
 
 // GPS, bevorzugt Neo-6M
-#define GPS_READ 0
+#define GPS_READ 1
 #define GPS_API_PIN 9
 
 // automatic firmware updates

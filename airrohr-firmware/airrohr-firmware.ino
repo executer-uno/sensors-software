@@ -411,10 +411,12 @@ LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
  * SDS011 declarations                                           *
  *****************************************************************/
 #ifdef ESP32
-  HardwareSerial serialSDS(1);
-  //SoftwareSerial serialSDS;  
+  //HardwareSerial serialSDS(2);
+  SoftwareSerial serialSDS;  
+  SoftwareSerial serialSDS2;  
 
-  HardwareSerial serialGPS(2);
+  HardwareSerial serialGPS(1);
+  
 #else
   SoftwareSerial serialSDS(PM_SERIAL_RX, PM_SERIAL_TX, false, 128);
   SoftwareSerial serialGPS(GPS_SERIAL_RX, GPS_SERIAL_TX, false, 512);
@@ -4116,12 +4118,12 @@ void setup() {
   }
   #endif
 
-  #ifndef ESP32
-	  //serialSDS.begin(9600);
-    serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX);
-  #else
+  #ifdef ESP32
     //serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX, PM_SERIAL_TX); // ESP32 HW UART
-    serialSDS.begin(9600, PM_SERIAL_RX, PM_SERIAL_TX, SWSERIAL_8N1, false, 256 ); // for SW UART
+    serialSDS.begin(9600, PM_SERIAL_RX, PM_SERIAL_TX, SWSERIAL_8N1, false, 256 ); // for SW UART    
+    serialSDS2.begin(9600, PM2_SERIAL_RX, PM2_SERIAL_TX, SWSERIAL_8N1, false, 256 ); // for SW UART    
+  #else
+    serialSDS.begin(9600);
   #endif
 	debug_out(F("\nChipId: "), DEBUG_MIN_INFO, 0);
 	debug_out(esp_chipid, DEBUG_MIN_INFO, 1);
@@ -4130,11 +4132,13 @@ void setup() {
   yield();
 	if (cfg::gps_read) {
     debug_out(F("Read GPS..."), DEBUG_MIN_INFO, 1);
-    #ifndef ESP32
- 		  serialGPS.begin(9600);
-    #else
+    #ifdef ESP32
       serialGPS.begin(9600, SERIAL_8N1, GPS_SERIAL_RX, GPS_SERIAL_TX);
+    #else
+       serialGPS.begin(9600);
     #endif
+
+    
     debug_out(F("Port configured."), DEBUG_MIN_INFO, 1);
 		disable_unneeded_nmea();
 	}
