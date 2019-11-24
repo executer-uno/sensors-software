@@ -114,20 +114,35 @@
 // Config functionality
   #define CFG_LCD        // !!!! That option not compatible with Google Spreadsheets
 //  #define CFG_DHT
-  #define CFG_DALLAS
+//                     #define CFG_DALLAS // too big sketch
   #define CFG_GPS
 //#define CFG_UPDATE
-  #define CFG_PT_ADD
-  #define CFG_BMP180
-  #define CFG_BME280
+//                     #define CFG_PT_ADD // too big sketch
+//                      #define CFG_BMP180
+//                      #define CFG_BME280
 //#define CFG_BLINK
 //#define CFG_PPD
   #define CFG_GSHEET
 //#define CFG_AIn     // read analog input
+  #define CFG_SQL
+
 /*****************************************************************
  * Includes                                                      *
  *****************************************************************/
 #include <FS.h>                     // must be first
+
+
+#ifdef CFG_SQL
+  //#include <stdio.h>
+  //#include <stdlib.h>
+  #include <sqlite3.h>
+  //#include <SPI.h>
+  //#include "SPIFFS.h"
+  /* You only need to format SPIFFS the first time you run a
+     test or else use the SPIFFS plugin to create a partition
+     https://github.com/me-no-dev/arduino-esp32fs-plugin */
+  #define FORMAT_SPIFFS_IF_FAILED true
+#endif
 
 
 #ifdef ESP32
@@ -183,7 +198,7 @@
 #ifdef CFG_LCD
 #include "./oledfont.h"				// avoids including the default Arial font, needs to be included before SSD1306.h
 #include <SSD1306.h>
-#include <SH1106.h>
+//                            #include <SH1106.h> // too big sketch
 #include <LiquidCrystal_I2C.h>
 #endif
 
@@ -203,7 +218,7 @@
 #include <Adafruit_BMP085.h>
 #endif
 
-#ifdef CFG_BMP180
+#ifdef CFG_BME280
 #include <Adafruit_BME280.h>
 #endif
 
@@ -409,10 +424,10 @@ int TimeZone = 1;
  * Display definitions                                           *
  *****************************************************************/
 SSD1306 display(0x3c, I2C_PIN_SDA, I2C_PIN_SCL); // OLED_ADDRESS
-SH1106 display_sh1106(0x3c, I2C_PIN_SDA, I2C_PIN_SCL);
-LiquidCrystal_I2C lcd_1602_27(0x27, 16, 2);
-LiquidCrystal_I2C lcd_1602_3f(0x3F, 16, 2);
-LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
+//SH1106 display_sh1106(0x3c, I2C_PIN_SDA, I2C_PIN_SCL);            // sketch too big
+//LiquidCrystal_I2C lcd_1602_27(0x27, 16, 2);
+//LiquidCrystal_I2C lcd_1602_3f(0x3F, 16, 2);
+//LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
 #endif
 
 /*****************************************************************
@@ -639,6 +654,55 @@ template<typename T, std::size_t N> constexpr std::size_t capacity_null_terminat
 
 const char data_first_part[] PROGMEM = "{\"software_version\": \"{v}\", \"sensordatavalues\":[";
 
+
+
+#ifdef CFG_SQL
+   sqlite3 *db;
+   int rc;
+
+
+  const char* data = "Callback function called";
+  static int callback(void *data, int argc, char **argv, char **azColName) {
+     int i;
+     Serial.printf("%s: ", (const char*)data);
+     for (i = 0; i<argc; i++){
+         Serial.printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+     }
+     Serial.printf("\n");
+     return 0;
+  }
+  
+  int db_open(const char *filename, sqlite3 **db) {
+     int rc = sqlite3_open(filename, db);
+     if (rc) {
+         Serial.printf("Can't open database: %s\n", sqlite3_errmsg(*db));
+         return rc;
+     } else {
+         Serial.printf("Opened database successfully\n");
+     }
+     return rc;
+  }
+  
+  char *zErrMsg = 0;
+  int db_exec(sqlite3 *db, const char *sql) {
+     Serial.println(sql);
+     long start = micros();
+     int rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
+     if (rc != SQLITE_OK) {
+         Serial.printf("SQL error: %s\n", zErrMsg);
+         sqlite3_free(zErrMsg);
+     } else {
+         Serial.printf("Operation done successfully\n");
+     }
+     Serial.print(F("Time taken:"));
+     Serial.println(micros()-start);
+     return rc;
+  }
+#endif
+
+
+
+
 #ifndef ESP32
 /*****************************************************************
  * Heap state debug                                              *
@@ -704,6 +768,7 @@ void display_debug(const String& text1, const String& text2) {
 		display.drawString(0, 24, text2);
 		display.display();
 	}
+ /*
 	if (cfg::has_sh1106) {
 		display_sh1106.clear();
 		display_sh1106.displayOn();
@@ -712,6 +777,8 @@ void display_debug(const String& text1, const String& text2) {
 		display_sh1106.drawString(0, 24, text2);
 		display_sh1106.display();
 	}
+ 
+
 	if (cfg::has_lcd1602) {
 		lcd_1602_3f.clear();
 		lcd_1602_3f.setCursor(0, 0);
@@ -733,6 +800,7 @@ void display_debug(const String& text1, const String& text2) {
 		lcd_2004_27.setCursor(0, 1);
 		lcd_2004_27.print(text2);
 	}
+ */
 #endif 
 }
 
@@ -3730,7 +3798,7 @@ void display_values() {
 			display.setTextAlignment(TEXT_ALIGN_CENTER);
 			display.drawString(64, 52, displayGenerateFooter(screen_count));
 			display.display();
-		}
+		}/*
 		if (cfg::has_sh1106) {
 			display_sh1106.clear();
 			display_sh1106.displayOn();
@@ -3758,7 +3826,7 @@ void display_values() {
 			lcd_2004_27.print(display_lines[1]);
 			lcd_2004_27.setCursor(0, 3);
 			lcd_2004_27.print(display_lines[2]);
-		}
+		}*/
 	}
 
 // ----5----0----5----0
@@ -3788,7 +3856,7 @@ void display_values() {
 		display_lines[1] = "FW: " + String(SOFTWARE_VERSION);
 		break;
 	}
-
+/*
 	if (cfg::has_lcd1602_27) {
 		lcd_1602_27.clear();
 		lcd_1602_27.setCursor(0, 0);
@@ -3803,6 +3871,7 @@ void display_values() {
 		lcd_1602_3f.setCursor(0, 1);
 		lcd_1602_3f.print(display_lines[1]);
 	}
+ */
 	yield();
   //debug_out(F("yield() called from 3629"), DEBUG_MIN_INFO, 0);
   //debug_out("", DEBUG_MIN_INFO, 1);
@@ -3818,12 +3887,13 @@ void display_values() {
  *****************************************************************/
 void init_display() {
 	display.init();
-	display_sh1106.init();
+	//display_sh1106.init();
 }
 
 /*****************************************************************
  * Init LCD display                                              *
  *****************************************************************/
+/*
 void init_lcd() {
 	if (cfg::has_lcd1602_27) {
 		lcd_1602_27.init();
@@ -3837,7 +3907,7 @@ void init_lcd() {
 		lcd_2004_27.init();
 		lcd_2004_27.backlight();
 	}
-}
+}*/
 #endif
 
 #ifdef CFG_PT_ADD
@@ -4104,7 +4174,7 @@ void setup() {
   
 #ifdef CFG_LCD
 	init_display();
-	init_lcd();
+	//init_lcd();
 #endif
   #ifndef ESP32
   setup_webserver();
@@ -4212,6 +4282,60 @@ void setup() {
   #ifdef CFG_BLINK
   digitalWrite(D0, HIGH);
   #endif
+
+#ifdef CFG_SQL
+
+    if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
+       Serial.println("Failed to mount file system");
+    }
+    else
+    {
+      // list SPIFFS contents
+      File root = SPIFFS.open("/");
+      if (!root) {
+         Serial.println("- failed to open directory");
+      }
+      else
+      {
+        if (!root.isDirectory()) {
+           Serial.println(" - not a directory");
+        }
+        else
+        {
+          File file = root.openNextFile();
+          while (file) {
+             if (file.isDirectory()) {
+                 Serial.print("  DIR : ");
+                 Serial.println(file.name());
+             } else {
+                 Serial.print("  FILE: ");
+                 Serial.print(file.name());
+                 Serial.print("\tSIZE: ");
+                 Serial.println(file.size());
+             }
+             file = root.openNextFile();
+          }
+          
+          sqlite3_initialize();
+          
+          if (!db_open("/spiffs/test1.db", &db))
+            {
+  
+            
+            rc = db_exec(db, "CREATE TABLE measurements (id INTEGER AUTOINCREMENT, date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL);");
+            if (rc != SQLITE_OK) {
+               sqlite3_close(db);
+               Serial.println("Table measurements creation filure");
+               return;
+            }
+            sqlite3_close(db);
+          }
+        }
+      }
+    }
+
+#endif
+
 
 }
 
@@ -4388,6 +4512,45 @@ static unsigned long sendDataToOptionalApis(const String &data) {
         Serial.println(" ms.");        
         sum_send_time += millis() - start_send;
   }
+#endif
+
+
+#ifdef CFG_SQL
+          
+          if (!db_open("/spiffs/test1.db", &db))
+            {
+            
+            /*
+            "CREATE TABLE measurements (id INTEGER AUTOINCREMENT, date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL)"
+            */
+            String query = "INSERT INTO measurements (date,time,lat,long,temp,press,pms1_pm100,pms1_pm025,pms2_pm100,pms2_pm025) VALUES (";
+            char   cquery[300];
+            
+            query += "'" + last_value_GPS_date + "',";
+            query += "'" + last_value_GPS_time + "',";
+            query += Float2String(last_value_GPS_lat) + ",";
+            query += Float2String(last_value_GPS_lon) + ",";
+            query += Float2String(last_value_BMP280_T) + ",";
+            query += Float2String(last_value_BMP280_P) + ",";
+            query += Float2String(last_value_SDS_P1) + ",";
+            query += Float2String(last_value_SDS_P2) + ",";
+            query += Float2String(last_value_SDS_P1) + ",";
+            query += Float2String(last_value_SDS_P2) + ")";
+
+            query.toCharArray(cquery, 299);
+            
+            Serial.print(F("SQL query = "));
+            Serial.println(cquery);
+        
+            
+            rc = db_exec(db, cquery);
+            if (rc != SQLITE_OK) {
+               Serial.println("Measurements not stored to SQL lite");
+            }
+            
+            sqlite3_close(db);
+          }
+
 #endif
 
 	return sum_send_time;
