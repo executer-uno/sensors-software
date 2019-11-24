@@ -122,7 +122,7 @@
 //                      #define CFG_BME280
 //#define CFG_BLINK
 //#define CFG_PPD
-  #define CFG_GSHEET
+  //                    #define CFG_GSHEET
 //#define CFG_AIn     // read analog input
   #define CFG_SQL
 
