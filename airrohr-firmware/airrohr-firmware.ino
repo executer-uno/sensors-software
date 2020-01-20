@@ -114,16 +114,17 @@
 // Config functionality
   #define CFG_LCD        // !!!! That option not compatible with Google Spreadsheets
 //  #define CFG_DHT
-//                     #define CFG_DALLAS // too big sketch
+  #define CFG_DALLAS
   #define CFG_GPS
 //#define CFG_UPDATE
-//                     #define CFG_PT_ADD // too big sketch
-//                      #define CFG_BMP180
-//                      #define CFG_BME280
+  #define CFG_PT_ADD
+  #define CFG_BMP180
+  #define CFG_BME280
 //#define CFG_BLINK
 //#define CFG_PPD
   //                    #define CFG_GSHEET
 //#define CFG_AIn     // read analog input
+  #define CFG_GSHEET
   #define CFG_SQL
 
 /*****************************************************************
@@ -361,7 +362,7 @@ namespace cfg {
 	char url_influx[100] = URL_INFLUX;
 
 	unsigned long time_for_wifi_config = 600000;
-	unsigned long sending_intervall_ms = 30000;   //145000;
+	unsigned long sending_intervall_ms = 60000;   //145000;
 
 	void initNonTrivials(const char* id) {
 		strcpy(cfg::current_lang, CURRENT_LANG);
@@ -657,8 +658,10 @@ const char data_first_part[] PROGMEM = "{\"software_version\": \"{v}\", \"sensor
 
 
 #ifdef CFG_SQL
-   sqlite3 *db;
-   int rc;
+  sqlite3 *db;
+  int rc;
+  sqlite3_stmt *res;
+  int rec_count = 0;
 
 
   const char* data = "Callback function called";
@@ -867,13 +870,23 @@ String Var2Json(const String& name, const bool value) {
 }
 
 /*****************************************************************
- * convert boolean value to json string                          *
+ * convert integer value to json string                          *
  *****************************************************************/
 String Var2Json(const String& name, const int value) {
 	String s = F("\"{n}\":\"{v}\",");
 	s.replace("{n}", name);
 	s.replace("{v}", String(value));
 	return s;
+}
+
+/*****************************************************************
+ * convert double value to json string                          *
+ *****************************************************************/
+String Var2Json(const String& name, const double value) {
+  String s = F("\"{n}\":\"{v}\",");
+  s.replace("{n}", name);
+  s.replace("{v}", String(value));
+  return s;
 }
 
 /*****************************************************************
@@ -3795,8 +3808,13 @@ void display_values() {
 			display.drawString(0, 13, display_lines[0]);  // up to three pixels (display with two colour fields with small gap between)
 			display.drawString(0, 25, display_lines[1]);
 			display.drawString(0, 37, display_lines[2]);
+
+      display.drawString(0, 52, "DB:" + String(rec_count));
+
 			display.setTextAlignment(TEXT_ALIGN_CENTER);
 			display.drawString(64, 52, displayGenerateFooter(screen_count));
+
+
 			display.display();
 		}/*
 		if (cfg::has_sh1106) {
@@ -4322,12 +4340,32 @@ void setup() {
             {
   
             
-            rc = db_exec(db, "CREATE TABLE measurements (id INTEGER AUTOINCREMENT, date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL);");
+            rc = db_exec(db, "CREATE TABLE IF NOT EXISTS measurements (date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL);");
             if (rc != SQLITE_OK) {
                sqlite3_close(db);
                Serial.println("Table measurements creation filure");
                return;
             }
+
+
+            // get actual number of records to variable
+            const char *sql = "Select count(*) from measurements";
+            if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) != SQLITE_OK) {
+                String resp = "Failed to fetch data: ";
+                resp += sqlite3_errmsg(db);
+                Serial.println(resp);
+            }
+            else {
+              if (sqlite3_step(res) != SQLITE_ROW) {
+                  String resp = "Step failure: ";
+                  resp += sqlite3_errmsg(db);
+                  Serial.println(resp);                
+              }
+              else {
+                  rec_count = sqlite3_column_int(res, 0);
+              }
+            }
+            sqlite3_finalize(res);  
             sqlite3_close(db);
           }
         }
@@ -4349,7 +4387,7 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 	unsigned long start_send = 0;
 	unsigned long sum_send_time = 0;
 
-
+  bool gs_sent = false;
     
 	if (cfg::send2madavi) {
 
@@ -4453,8 +4491,6 @@ static unsigned long sendDataToOptionalApis(const String &data) {
         debug_out(F("Send to spreadsheet"), DEBUG_MIN_INFO, 1);
         start_send = millis();
         yield();
-        //debug_out(F("yield() called from 4059"), DEBUG_MIN_INFO, 0);
-        //debug_out("", DEBUG_MIN_INFO, 1);
 
         // Connect to spreadsheet
         client = new HTTPSRedirect(httpsPort);
@@ -4495,11 +4531,150 @@ static unsigned long sendDataToOptionalApis(const String &data) {
           if(client->POST(url2, host, payload)){
             debug_out(F("Spreadsheet updated"), DEBUG_MIN_INFO, 1);
             error_count = 0; // reset counter after sucessfull post
+            gs_sent = true;
           }
           else{
             error_count++;
             debug_out(F("Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
           }
+
+
+#ifdef CFG_SQL
+          // anything in database to be sent?
+          if(rec_count && gs_sent)
+          {
+            long rowid = -1;  // surely, should be int64_t
+            if (!db_open("/spiffs/test1.db", &db))
+            {             
+              debug_out(F("Buffered data in DB. Send prepare."), DEBUG_MIN_INFO, 1);
+  
+              //"CREATE TABLE measurements (date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL)"
+              // get data from storage
+              const char *sql = "SELECT rowid, date, time, lat, long, temp, press, pms1_pm100, pms1_pm025, pms2_pm100, pms2_pm025 FROM measurements LIMIT 1";
+              if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) != SQLITE_OK) {
+                  String resp = "Failed to fetch data: ";
+                  resp += sqlite3_errmsg(db);
+                  Serial.println(resp);
+              }
+              else {
+  
+                while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
+  
+                    String data = FPSTR(data_first_part);
+                    data.replace("{v}", SOFTWARE_VERSION);
+
+                    rowid = sqlite3_column_int64(res,0);
+                    Serial.printf("Retrived rowid=%d\r\n",  rowid);
+  
+                    // GPS data
+                    data += Var2Json(F("GPS_date"),              sqlite3_column_int(res, 1));
+                    data += Var2Json(F("GPS_time"),              sqlite3_column_int(res, 2));
+                    data += Var2Json(F("GPS_lat"),            sqlite3_column_double(res, 3));
+                    data += Var2Json(F("GPS_lon"),            sqlite3_column_double(res, 4));
+    
+                    data += Var2Json(F("BMP280_pressure"),    sqlite3_column_double(res, 5));
+                    data += Var2Json(F("BMP280_temperature"), sqlite3_column_double(res, 6));
+                    
+                    data += Var2Json(F("PM1_P1"),             sqlite3_column_double(res, 7));
+                    data += Var2Json(F("PM1_P2"),             sqlite3_column_double(res, 8));
+                    
+                    data += Var2Json(F("PM2_P1"),             sqlite3_column_double(res, 9));
+                    data += Var2Json(F("PM2_P2"),             sqlite3_column_double(res,10));
+                    
+                    data += "]}";
+                    
+                    sqlite3_finalize(res);  
+
+                    // send buffered data to GSheet ****************************
+  
+                    data.remove(0, 1);
+                    data = "{\"esp8266id\": \"" + String(esp_chipid) + "\", \"count_sends\": \"" + String(count_sends) + "\"," + data;  
+                    
+                    debug_out(F("Send from buffer to spreadsheet"), DEBUG_MIN_INFO, 1);
+                    payload = payload_base + data;
+                    
+                    Serial.println(payload);
+
+
+                    // double part *********************************************
+
+
+                                          yield();
+                                  
+                                          // Connect to spreadsheet
+                                          client = new HTTPSRedirect(httpsPort);
+                                          //client->setInsecure();  
+                                          client->setPrintResponseBody(false);
+                                          client->setContentTypeHeader("application/json");
+                                  
+                                          if (client != nullptr){
+                                            if (!client->connected()){
+                                  
+                                              // Try to connect for a maximum of 3 times
+                                              for (int i=0; i<3; i++){
+                                                int retval = client->connect(host, httpsPort);
+                                                if (retval == 1) {
+                                                   break;
+                                                }
+                                                else {
+                                                  debug_out(F("Connection failed. Retrying..."), DEBUG_MIN_INFO, 1);
+                                                  Serial.println(client->getResponseBody() );
+                                                  error_count++;
+                                                }
+                                              }  
+                                            }
+                                          }
+                                          else{
+                                            debug_out(F("Error creating client object!"), DEBUG_MIN_INFO, 1);
+                                            error_count++;
+                                          }
+                                          if (!client->connected()){
+                                            debug_out(F("Connection failed. Stand by till next period"), DEBUG_MIN_INFO, 1);
+                                          }
+                                          else
+                                          {
+                                            
+                                            if(client->POST(url2, host, payload)){
+                                              debug_out(F("Spreadsheet updated"), DEBUG_MIN_INFO, 1);
+
+                                              // Data sent sucesfully. Remove record from DB
+
+                                              String query = "DELETE FROM measurements where rowid=";
+                                              query += String(rowid);
+                                  
+                                              rc = db_exec(db, query.c_str());
+                                              if (rc != SQLITE_OK) {
+                                                 Serial.println("Row delete command failed");
+                                              }
+                                              else
+                                              {
+                                                debug_out(F("Spreadsheet updated sucesfully. Buffer row deleted"), DEBUG_MIN_INFO, 1);
+                                              }
+                                              
+                                            }
+                                            else{
+                                              error_count++;
+                                              debug_out(F("Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
+                                            }
+                                          }
+                                          
+
+
+                    // double part *********************************************
+                    
+                }
+                if (rc != SQLITE_DONE) {
+                  String resp = "Step failure: ";
+                  resp += sqlite3_errmsg(db);
+                  Serial.println(resp);
+                }
+              }
+              //sqlite3_finalize(res);  
+              sqlite3_close(db);
+              
+            }
+          }
+#endif
         }
 
         // delete HTTPSRedirect object
@@ -4516,15 +4691,15 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
 
 #ifdef CFG_SQL
-          
+  if(!gs_sent) // store to DB if cloud unavailable
+  {     
           if (!db_open("/spiffs/test1.db", &db))
-            {
+          {
             
             /*
-            "CREATE TABLE measurements (id INTEGER AUTOINCREMENT, date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL)"
+            "CREATE TABLE measurements (date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL)"
             */
             String query = "INSERT INTO measurements (date,time,lat,long,temp,press,pms1_pm100,pms1_pm025,pms2_pm100,pms2_pm025) VALUES (";
-            char   cquery[300];
             
             query += "'" + last_value_GPS_date + "',";
             query += "'" + last_value_GPS_time + "',";
@@ -4537,19 +4712,38 @@ static unsigned long sendDataToOptionalApis(const String &data) {
             query += Float2String(last_value_SDS_P1) + ",";
             query += Float2String(last_value_SDS_P2) + ")";
 
-            query.toCharArray(cquery, 299);
-            
-            Serial.print(F("SQL query = "));
-            Serial.println(cquery);
-        
-            
-            rc = db_exec(db, cquery);
+            rc = db_exec(db, query.c_str());
             if (rc != SQLITE_OK) {
                Serial.println("Measurements not stored to SQL lite");
             }
-            
+            else
+            {
+
+  
+              // get actual number of records to variable
+              const char *sql = "Select count(*) from measurements";
+              if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) != SQLITE_OK) {
+                  String resp = "Failed to fetch data: ";
+                  resp += sqlite3_errmsg(db);
+                  Serial.println(resp);
+              }
+              else {
+                if (sqlite3_step(res) != SQLITE_ROW) {
+                    String resp = "Step failure: ";
+                    resp += sqlite3_errmsg(db);
+                    Serial.println(resp);                
+                }
+                else {
+                    rec_count = sqlite3_column_int(res, 0);
+                }
+              }
+              sqlite3_finalize(res);  
+              sqlite3_close(db);
+              
+            }
             sqlite3_close(db);
           }
+  }
 
 #endif
 
