@@ -2063,8 +2063,8 @@ void webserver_values() {
 #endif
 
 		page_content += FPSTR(EMPTY_ROW);
-		page_content += table_row_from_value(***REMOVED***, FPSTR(INTL_SIGNAL_STRENGTH),  String(WiFi.RSSI()), "dBm");
-		page_content += table_row_from_value(***REMOVED***, FPSTR(INTL_SIGNAL_QUALITY), String(signal_quality), "%");
+		page_content += table_row_from_value("WiFi", FPSTR(INTL_SIGNAL_STRENGTH),  String(WiFi.RSSI()), "dBm");
+		page_content += table_row_from_value("WiFi", FPSTR(INTL_SIGNAL_QUALITY), String(signal_quality), "%");
 
 		page_content += FPSTR(EMPTY_ROW);
 		page_content += F("<tr><td colspan='2'>");

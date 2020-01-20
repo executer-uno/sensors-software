@@ -2,12 +2,8 @@
 #define CURRENT_LANG INTL_LANG
 
 // Wifi config
-#define WLANSSID   ***REMOVED***     
-#define WLANPWD    ***REMOVED***   
-
-//#define WLANSSID   ***REMOVED***
-//#define WLANPWD    ***REMOVED***
-
+#define WLANSSID   "WIFI_ssid"     
+#define WLANPWD    "WIFI_passw"   
 
 // BasicAuth config
 #define WWW_USERNAME "admin"
@@ -16,12 +12,12 @@
 
 #ifdef CFG_GSHEET
   // Replace with your own script id to make server side changes
-  const char *GScriptId = ***REMOVED***;
+  const char *GScriptId = "Replace with your own script id";
 #endif
   
 // Sensor Wifi config (config mode)
-#define FS_SSID ""//***REMOVED***
-#define FS_PWD  ""//***REMOVED***
+#define FS_SSID ""
+#define FS_PWD  ""
 
 // Wohin gehen die Daten?
 #define SEND2DUSTI 0
