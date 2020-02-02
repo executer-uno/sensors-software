@@ -24,3 +24,4 @@ astyle.rc
 spec.d
 **cleanup.txt
 astyle.rc
+/Release/
