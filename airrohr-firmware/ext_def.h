@@ -3,7 +3,7 @@
 // Language config
 #define CURRENT_LANG INTL_LANG
 
-#include Credentials.h
+#include "Credentials.h"
 
 
 // BasicAuth config
@@ -251,9 +251,13 @@ static const uint16_t suites[] PROGMEM = {
 #define SDCARD_SCLK 18
 #define SDCARD_CS   5
 
-
-
-
 #endif
 
+#define SQLITE_OK           0   /* Successful result */
 
+enum class PmSensorCmd {
+	Start,
+	Stop,
+	ContinuousMode,
+	VersionDate
+};

@@ -2,7 +2,8 @@
 
 #include <Arduino.h>
 
-#include "PM25_portable.h"
+
+
 
 #define  NO_GLOBAL_SERIAL
 // in sloeber need to add attribute in
@@ -102,14 +103,14 @@
  *
  * 06.07.2018
  * Der Sketch verwendet 459607 Bytes (44%) des Programmspeicherplatzes. Das Maximum sind 1044464 Bytes.
- * Globale Variablen verwenden 48736 Bytes (59%) des dynamischen Speichers, 33184 Bytes fÃ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
+ * Globale Variablen verwenden 48736 Bytes (59%) des dynamischen Speichers, 33184 Bytes fÃƒÂ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  * first version with esp8266 lib 2.4.2
  * Der Sketch verwendet 491364 Bytes (47%) des Programmspeicherplatzes. Das Maximum sind 1044464 Bytes.
- * Globale Variablen verwenden 37172 Bytes (45%) des dynamischen Speichers, 44748 Bytes fÃ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
+ * Globale Variablen verwenden 37172 Bytes (45%) des dynamischen Speichers, 44748 Bytes fÃƒÂ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  * Der Sketch verwendet 489152 Bytes (46%) des Programmspeicherplatzes. Das Maximum sind 1044464 Bytes.
- * Globale Variablen verwenden 37160 Bytes (45%) des dynamischen Speichers, 44760 Bytes fÃ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
+ * Globale Variablen verwenden 37160 Bytes (45%) des dynamischen Speichers, 44760 Bytes fÃƒÂ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  ************************************************************************/
 
@@ -272,7 +273,7 @@
 #include <assert.h>
 
 #ifdef CFG_GSHEET
-	#include "HTTPSRedirect/HTTPSRedirect.h"
+	#include "lib/HTTPSRedirect.h"
 #endif
 
 // For Custom WDT
@@ -1462,16 +1463,11 @@ String form_select_lang() {
 					"<select name='current_lang'>"
 					"<option value='DE'{s_DE}>Deutsch (DE)</option>"
 					"<option value='BG'{s_BG}>Bulgarian (BG)</option>"
-					"<option value='CZ'{s_CZ}>ÄŒeskÃ½ (CZ)</option>"
 					"<option value='EN'{s_EN}>English (EN)</option>"
-					"<option value='ES'{s_ES}>EspaÃ±ol (ES)</option>"
-					"<option value='FR'{s_FR}>FranÃ§ais (FR)</option>"
 					"<option value='IT'{s_IT}>Italiano (IT)</option>"
-					"<option value='LU'{s_LU}>LÃ«tzebuergesch (LU)</option>"
 					"<option value='NL'{s_NL}>Nederlands (NL)</option>"
 					"<option value='PL'{s_PL}>Polski (PL)</option>"
-					"<option value='PT'{s_PT}>PortuguÃªs (PT)</option>"
-					"<option value='RU'{s_RU}>Ð ÑƒÑ�Ñ�ÐºÐ¸Ð¹ (RU)</option>"
+					"<option value='PT'{s_PT}>PortuguÃƒÂªs (PT)</option>"
 					"<option value='SE'{s_SE}>Svenska (SE)</option>"
 					"</select>"
 					"</td>"
@@ -1989,9 +1985,9 @@ void webserver_wifi() {
 			}
 			// Print SSID and RSSI for each network found
 			#ifndef ESP32
-			page_content += wlan_ssid_to_table_row(wifiInfo[indices[i]].ssid, ((wifiInfo[indices[i]].encryptionType == ENC_TYPE_NONE) ? " " : u8"ðŸ”’"), wifiInfo[indices[i]].RSSI);
+			page_content += wlan_ssid_to_table_row(wifiInfo[indices[i]].ssid, ((wifiInfo[indices[i]].encryptionType == ENC_TYPE_NONE) ? " " : u8"🔒"), wifiInfo[indices[i]].RSSI);
 			#else
-			page_content += wlan_ssid_to_table_row(wifiInfo[indices[i]].ssid, ((wifiInfo[indices[i]].encryptionType == WIFI_AUTH_OPEN) ? " " : u8"ðŸ”’"), wifiInfo[indices[i]].RSSI);
+			page_content += wlan_ssid_to_table_row(wifiInfo[indices[i]].ssid, ((wifiInfo[indices[i]].encryptionType == WIFI_AUTH_OPEN) ? " " : u8"🔒"), wifiInfo[indices[i]].RSSI);
 			#endif
 		}
 		page_content += FPSTR(TABLE_TAG_CLOSE_BR);
@@ -2078,8 +2074,8 @@ void webserver_values() {
 		}
 		if (cfg::gps_read) {
 			page_content += FPSTR(EMPTY_ROW);
-			page_content += table_row_from_value("GPS", FPSTR(INTL_LATITUDE), check_display_value(last_value_GPS_lat, -200.0, 6, 0), "°");
-			page_content += table_row_from_value("GPS", FPSTR(INTL_LONGITUDE), check_display_value(last_value_GPS_lon, -200.0, 6, 0), "°");
+			page_content += table_row_from_value("GPS", FPSTR(INTL_LATITUDE), check_display_value(last_value_GPS_lat, -200.0, 6, 0), "Â°");
+			page_content += table_row_from_value("GPS", FPSTR(INTL_LONGITUDE), check_display_value(last_value_GPS_lon, -200.0, 6, 0), "Â°");
 			page_content += table_row_from_value("GPS", FPSTR(INTL_ALTITUDE),	check_display_value(last_value_GPS_alt, -1000.0, 2, 0), "m");
 			page_content += table_row_from_value("GPS", FPSTR(INTL_DATE), last_value_GPS_date, "");
 			page_content += table_row_from_value("GPS", FPSTR(INTL_TIME), last_value_GPS_time, "");
@@ -2756,7 +2752,7 @@ static String sensorDHT() {
 			debug_out(String(FPSTR(SENSORS_DHT22)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
 		} else {
 			debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-			debug_out(String(t) + u8"°C", DEBUG_MIN_INFO, 1);
+			debug_out(String(t) + u8"Â°C", DEBUG_MIN_INFO, 1);
 			debug_out(FPSTR(DBG_TXT_HUMIDITY), DEBUG_MIN_INFO, 0);
 			debug_out(String(h) + "%", DEBUG_MIN_INFO, 1);
 			last_value_DHT_T = t;
@@ -3844,9 +3840,9 @@ void display_values() {
 			if (pm25_sensor != pm10_sensor) {
 				display_header += " / " + pm25_sensor;
 			}
-			display_lines[0] = "PM  0.1:  "  + check_display_value(pm01_value, -1, 1, 6) + " µg/m³";
-			display_lines[1] = "PM  2.5:  "  + check_display_value(pm25_value, -1, 1, 6) + " µg/m³";
-			display_lines[2] = "PM 10.0:  "  + check_display_value(pm10_value, -1, 1, 6) + " µg/m³";
+			display_lines[0] = "PM  0.1:  "  + check_display_value(pm01_value, -1, 1, 6) + " Âµg/mÂ³";
+			display_lines[1] = "PM  2.5:  "  + check_display_value(pm25_value, -1, 1, 6) + " Âµg/mÂ³";
+			display_lines[2] = "PM 10.0:  "  + check_display_value(pm10_value, -1, 1, 6) + " Âµg/mÂ³";
 			break;
 
 		case (2):
@@ -3854,8 +3850,8 @@ void display_values() {
 			if (sds25_sensor != sds10_sensor) {
 				display_header += " / " + sds25_sensor;
 			}
-			display_lines[0] = "PM  2.5:  " + check_display_value(sds25_value, -1, 1, 6) + " µg/m³";
-			display_lines[1] = "PM 10.0:  " + check_display_value(sds10_value, -1, 1, 6) + " µg/m³";
+			display_lines[0] = "PM  2.5:  " + check_display_value(sds25_value, -1, 1, 6) + " Âµg/mÂ³";
+			display_lines[1] = "PM 10.0:  " + check_display_value(sds10_value, -1, 1, 6) + " Âµg/mÂ³";
 			display_lines[2] = "";
 			break;
 
@@ -3867,7 +3863,7 @@ void display_values() {
 			if ((h_sensor != "" && p_sensor != "" && (h_sensor != p_sensor)) || (h_sensor == "" && p_sensor != "" && (t_sensor != p_sensor))) {
 				display_header += " / " + p_sensor;
 			}
-			if (t_sensor != "") { display_lines[line_count++] = "Temp.: " + check_display_value(t_value, -128, 1, 6) + " °C"; }
+			if (t_sensor != "") { display_lines[line_count++] = "Temp.: " + check_display_value(t_value, -128, 1, 6) + " Â°C"; }
 			if (h_sensor != "") { display_lines[line_count++] = "Hum.:	" + check_display_value(h_value, -1, 1, 6) + " %"; }
 			if (p_sensor != "") { display_lines[line_count++] = "Pres.: " + check_display_value(p_value / 100, (-1 / 100.0), 1, 6) + " hPa"; }
 			while (line_count < 3) { display_lines[line_count++] = ""; }
@@ -3946,9 +3942,9 @@ void display_values() {
 		}
 		if (cfg::has_lcd2004_27) {
 			display_header = String((next_display_count % screen_count) + 1) + "/" + String(screen_count) + " " + display_header;
-			display_lines[0].replace(" µg/m³", "");
-			display_lines[0].replace("°", String(char(223)));
-			display_lines[1].replace(" µg/m³", "");
+			display_lines[0].replace(" Âµg/mÂ³", "");
+			display_lines[0].replace("Â°", String(char(223)));
+			display_lines[1].replace(" Âµg/mÂ³", "");
 			lcd_2004_27.clear();
 			lcd_2004_27.setCursor(0, 0);
 			lcd_2004_27.print(display_header);
@@ -3963,8 +3959,8 @@ void display_values() {
 
 // ----5----0----5----0
 // PM10/2.5: 1999/999
-// T/H: -10.0°C/100.0%
-// T/P: -10.0°C/1000hPa
+// T/H: -10.0Â°C/100.0%
+// T/P: -10.0Â°C/1000hPa
 
 	switch (screens[next_display_count % screen_count]) {
 	case (1):
