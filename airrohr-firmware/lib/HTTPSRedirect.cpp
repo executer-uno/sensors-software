@@ -10,6 +10,7 @@
 extern	SoftwareSerial Serial;
 
 
+
 #include "HTTPSRedirect.h"
 #include "DebugMacros.h"
 
@@ -34,6 +35,7 @@ void HTTPSRedirect::Init(void){
 // This is the main function which is similar to the method
 // print() from WifiClient or WifiClientSecure
 bool HTTPSRedirect::printRedir(void){
+
 	unsigned int httpStatus;
 
 
@@ -279,7 +281,8 @@ void HTTPSRedirect::fetchBodyUnChunked(unsigned len){
     // Decrement once more to account for the '\n' line ending character
     --len;
 
-    //if (_printResponseBody)
+
+    if (_printResponseBody)
       Serial.println(line);
 
     _myResponse.body += line;
@@ -312,7 +315,7 @@ void HTTPSRedirect::fetchBodyChunked(void){
     
     while (chunkSize > 0){
       line = readStringUntil('\n');
-      //if (_printResponseBody)
+      if (_printResponseBody)
         Serial.println(line);
 
       _myResponse.body += line;
