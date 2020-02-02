@@ -23,8 +23,8 @@
 #define WWW_BASICAUTH_ENABLED 0
 
 #ifdef CFG_GSHEET
-  // Replace with your own script id to make server side changes
-const char *GScriptId = ***REMOVED***;
+	// Replace with your own script id to make server side changes
+	const char *GScriptId = ***REMOVED***;
 #endif
   
 // Sensor Wifi config (config mode)
@@ -105,8 +105,11 @@ const char *GScriptId = ***REMOVED***;
 	#define PM2_SERIAL_RX   25  // PMS
 	#define PM2_SERIAL_TX   26	// PMS
 
-	#define GPS_SERIAL_RX   16
-	#define GPS_SERIAL_TX   17
+	#define GPS_SERIAL_RX   16	// GPS
+	#define GPS_SERIAL_TX   17	// GPS
+
+	#define DEB_RX    		3	// Debug UART pins
+	#define DEB_TX    		1
 
 	#define BUT_A 			2
 	#define BUT_B 			4
@@ -140,7 +143,7 @@ const char *GScriptId = ***REMOVED***;
 #define SDS_API_PIN 1
 
 // PMS1003, PMS300, 3PMS5003, PMS6003, PMS7003
-#define PMS_READ 0
+#define PMS_READ 1
 #define PMS_API_PIN 1
 
 // Honeywell PM sensor

@@ -1,7 +1,13 @@
+#define NO_GLOBAL_SERIAL
+
 #include <Arduino.h>
 
 #include "PM25_portable.h"
 
+#define  NO_GLOBAL_SERIAL
+// in sloeber need to add attribute in
+// project properties/arduino/Compiler options/Add for C and C++
+// -DNO_GLOBAL_SERIAL
 //https://github.com/plerup/espsoftwareserial ESP32 Software serial:
 #include "SoftwareSerial.h"
 
@@ -426,7 +432,7 @@ namespace cfg {
 
 #define JSON_BUFFER_SIZE 2000
 
-
+SoftwareSerial Serial;
 
 String basic_auth_influx = "";
 String basic_auth_custom = "";
@@ -459,11 +465,10 @@ SSD1306 display(0x3c, I2C_PIN_SDA, I2C_PIN_SCL); // OLED_ADDRESS
  * SDS011 declarations																					 *
  *****************************************************************/
 #ifdef ESP32
-	//HardwareSerial serialSDS(2);
-	SoftwareSerial serialSDS;
-	SoftwareSerial serialPMS;
 
-	HardwareSerial serialGPS(1);
+	HardwareSerial serialSDS(0);
+	HardwareSerial serialPMS(1);
+	HardwareSerial serialGPS(2);
 
 #else
 	SoftwareSerial serialSDS(PM_SERIAL_RX, PM_SERIAL_TX, false, 128);
@@ -3651,7 +3656,7 @@ String sensorGPS() {
 	}
 
 	if ( gps.charsProcessed() < 10) {
-		debug_out(F(": check wiring"), DEBUG_ERROR, 1);
+		//debug_out(F(": check wiring"), DEBUG_ERROR, 1);
 	}
 
 	debug_out(String(FPSTR(DBG_TXT_END_READING)) + "GPS", DEBUG_MED_INFO, 1);
@@ -4345,12 +4350,14 @@ static bool acquireNetworkTime() {
  *****************************************************************/
 void setup() {
 	#ifdef ESP32
-	Serial.begin(115200);
+
+	//Serial.begin(115200);
+	Serial.begin(9600, SWSERIAL_8N1, DEB_RX, DEB_TX, false, 95, 11);
+	debug_out(F("SW serial started"), DEBUG_MIN_INFO, 1);
+
 	#else
 	Serial.begin(74880);					// Output to Serial at 9600 baud
 	#endif
-
-	MemStat();
 
 	// Configure buttons
 	pinMode(BUT_A, INPUT_PULLDOWN);
@@ -4371,6 +4378,24 @@ void setup() {
 
 	cfg::initNonTrivials(esp_chipid.c_str());
 	readConfig();
+
+	MemStat();
+
+	if (cfg::sds_read) {
+		serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX,  PM_SERIAL_TX);			 		// for HW UART SDS
+	}
+
+	MemStat();
+
+	if (cfg::pms_read) {
+		serialPMS.begin(9600, SERIAL_8N1, PM2_SERIAL_RX, PM2_SERIAL_TX);			 	// for HW UART PMS
+	}
+
+	MemStat();
+
+	if (cfg::gps_read) {
+		serialGPS.begin(9600, SERIAL_8N1, GPS_SERIAL_RX, GPS_SERIAL_TX);			 	// for HW UART GPS
+	}
 
 	#ifdef CFG_BLINK
 	pinMode(D0, OUTPUT);		 // Initialize the LED_BUILTIN pin as an output
@@ -4408,23 +4433,6 @@ void setup() {
 
 	debug_out(F("Setup UARTs"), DEBUG_MIN_INFO, 1);
 
-	MemStat();
-
-	if (cfg::sds_read) {
-		serialSDS.begin(9600, PM_SERIAL_RX,  PM_SERIAL_TX,  SWSERIAL_8N1, false, 512 );    // for SW UART SDS
-	}
-
-	MemStat();
-
-	if (cfg::pms_read) {
-		serialPMS.begin(9600, PM2_SERIAL_RX, PM2_SERIAL_TX, SWSERIAL_8N1, false, 512 ); // for SW UART PMS
-	}
-
-	MemStat();
-
-	if (cfg::gps_read) {
-		serialGPS.begin(9600, SERIAL_8N1, GPS_SERIAL_RX, GPS_SERIAL_TX);			 	// for HW UART DPS
-	}
 
 	powerOnTestSensors();
 	yield();
@@ -4654,8 +4662,19 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 		#endif
 
 				String data_4_custom = data;
+
+				// prepare for googlesheet script
 				data_4_custom.remove(0, 1);
-				data_4_custom = "{\"esp8266id\": \"" + String(esp_chipid) + "\", \"count_sends\": \"" + String(count_sends) + "\"," + data_4_custom;
+				data_4_custom = "{\"espid\": \"" + String(esp_chipid) + "\", \"count_sends\": \"" + String(count_sends) + "\"," + data_4_custom + "}";
+				data_4_custom.replace("\"sensordatavalues\":[", "\"sensordatavalues\":{");
+				data_4_custom.replace("{\"value_type\":","");
+				data_4_custom.replace(",\"value\"","");
+				data_4_custom.replace("}","");
+				data_4_custom.replace("]","");
+				data_4_custom = data_4_custom + ",\"Heap_Siz\":"+String(ESP.getHeapSize())+",\"Heap_Free\":"+String(esp_get_free_heap_size())+",\"Heap_MinFree\":"+String(esp_get_minimum_free_heap_size())+",\"Heap_MaxAlloc\":"+String(ESP.getMaxAllocHeap());
+				data_4_custom = data_4_custom + "}}}";
+
+				MemStat();
 
 				debug_out(F("Send to spreadsheet"), DEBUG_MIN_INFO, 1);
 				start_send = millis();
@@ -4707,6 +4726,8 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 						debug_out(F("Spreadsheet update fails: "), DEBUG_MIN_INFO, 1);
 					}
 
+					MemStat();
+
 
 #ifdef CFG_SQL
 					// anything in database to be sent?
@@ -4736,19 +4757,19 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 										Serial.printf("Retrived rowid=%ld\r\n",	rowid);
 
 										// GPS data
-										data += Var2Json(F("GPS_date"),							sqlite3_column_int(res, 1));
-										data += Var2Json(F("GPS_time"),							sqlite3_column_int(res, 2));
+										data += Var2Json(F("GPS_date"),						sqlite3_column_int(res, 1));
+										data += Var2Json(F("GPS_time"),						sqlite3_column_int(res, 2));
 										data += Var2Json(F("GPS_lat"),						sqlite3_column_double(res, 3));
 										data += Var2Json(F("GPS_lon"),						sqlite3_column_double(res, 4));
 
-										data += Var2Json(F("BMP280_pressure"),		sqlite3_column_double(res, 5));
-										data += Var2Json(F("BMP280_temperature"), sqlite3_column_double(res, 6));
+										data += Var2Json(F("BME280_pressure"),				sqlite3_column_double(res, 5));
+										data += Var2Json(F("BME280_temperature"), 			sqlite3_column_double(res, 6));
 
-										data += Var2Json(F("PM1_P1"),						 sqlite3_column_double(res, 7));
-										data += Var2Json(F("PM1_P2"),						 sqlite3_column_double(res, 8));
+										data += Var2Json(F("SDS_P1"),						sqlite3_column_double(res, 7));
+										data += Var2Json(F("SDS_P2"),						sqlite3_column_double(res, 8));
 
-										data += Var2Json(F("PM2_P1"),						 sqlite3_column_double(res, 9));
-										data += Var2Json(F("PM2_P2"),						 sqlite3_column_double(res,10));
+										data += Var2Json(F("PMS_P1"),						sqlite3_column_double(res, 9));
+										data += Var2Json(F("PMS_P2"),						sqlite3_column_double(res,10));
 
 										data += "]}";
 
@@ -4756,8 +4777,14 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
 										// send buffered data to GSheet ****************************
 
+										// prepare for googlesheet script
 										data.remove(0, 1);
-										data = "{\"esp8266id\": \"" + String(esp_chipid) + "\", \"count_sends\": \"" + String(count_sends) + "\"," + data;
+										data = "{\"espid\": \"" + String(esp_chipid) + "\", \"count_sends\": \"" + "DB" + "\"," + data + "}";
+										data.replace("\"sensordatavalues\":[", "\"sensordatavalues\":{");
+										data.replace("}","");
+										data.replace("]","");
+										data = data + "\"Heap_Siz\":"+String(ESP.getHeapSize())+",\"Heap_Free\":"+String(esp_get_free_heap_size())+",\"Heap_MinFree\":"+String(esp_get_minimum_free_heap_size())+",\"Heap_MaxAlloc\":"+String(ESP.getMaxAllocHeap());
+										data = data + "}}}";
 
 										debug_out(F("Send from buffer to spreadsheet"), DEBUG_MIN_INFO, 1);
 										payload = payload_base + data;
@@ -4769,12 +4796,13 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
 
 												yield();
+												MemStat();
 
 												// Connect to spreadsheet
-												client = new HTTPSRedirect(httpsPort);
+												//client = new HTTPSRedirect(httpsPort);  // memory leakage
 												//client->setInsecure();
-												client->setPrintResponseBody(false);
-												client->setContentTypeHeader("application/json");
+												//client->setPrintResponseBody(false);
+												//client->setContentTypeHeader("application/json");
 
 												if (client != nullptr){
 													if (!client->connected()){
@@ -4845,10 +4873,15 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 					}
 #endif
 				}
+				MemStat();
 
 				// delete HTTPSRedirect object
 				delete client;
 				client = nullptr;
+
+				Serial.print(F("client object deleted"));
+
+				MemStat();
 
 				// Debug log
 				Serial.print(F("Spreadsheet updated in "));
