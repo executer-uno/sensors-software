@@ -316,9 +316,10 @@ const unsigned long PAUSE_BETWEEN_UPDATE_ATTEMPTS_MS = ONE_DAY_IN_MS;				// chec
 const unsigned long DURATION_BEFORE_FORCED_RESTART_MS = ONE_DAY_IN_MS * 28;	// force a reboot every ~4 weeks
 
 #ifdef CFG_GSHEET
-const char* host = "script.google.com";
-const int httpsPort = 443;
-const char* fingerprint = "";
+	const char* host = "script.google.com";
+	const int httpsPort = 443;
+	const char* fingerprint = "";
+	int error_count = 0;
 #endif
 
 /******************************************************************
@@ -653,7 +654,6 @@ bool BUT_B_PRESS=false;
 	String payload = "";
 
 	HTTPSRedirect* client = nullptr;
-	static unsigned long error_count = 0; // Errors counter not resetable until sucess data push
 #endif
 
 #ifdef CFG_AIn
@@ -4295,6 +4295,13 @@ static void logEnabledDisplays() {
 	}
 }
 
+static void MemStat(){
+	debug_out(F("RAM state:"), DEBUG_MIN_INFO, 1);
+	Serial.printf("\n * Heap size: %d\n", ESP.getHeapSize());
+	Serial.printf(" * Free Heap: %d\n", esp_get_free_heap_size());
+	Serial.printf(" * Min Free Heap: %d\n", esp_get_minimum_free_heap_size());
+	Serial.printf(" * Max Alloc Heap: %d\n", ESP.getMaxAllocHeap());
+}
 
 static bool acquireNetworkTime() {
 	int retryCount = 0;
@@ -4343,6 +4350,8 @@ void setup() {
 	Serial.begin(74880);					// Output to Serial at 9600 baud
 	#endif
 
+	MemStat();
+
 	// Configure buttons
 	pinMode(BUT_A, INPUT_PULLDOWN);
 	pinMode(BUT_B, INPUT_PULLUP);
@@ -4372,6 +4381,8 @@ void setup() {
 	WDT_last_loop = millis();
 	tickerOSWatch.attach_ms(((OSWATCH_RESET_TIME / 3) * 1000), osWatch);
 
+	MemStat();
+
 #ifdef CFG_LCD
 	init_display();
 	//init_lcd();
@@ -4384,6 +4395,9 @@ void setup() {
 
 	create_basic_auth_strings();
 
+	MemStat();
+
+
 	if ((WiFi.status() == WL_CONNECTED) && !got_ntp) {
 		debug_out(F("\nWiFi connected - start web server"), DEBUG_MIN_INFO, 0);
 		setup_webserver();
@@ -4394,13 +4408,19 @@ void setup() {
 
 	debug_out(F("Setup UARTs"), DEBUG_MIN_INFO, 1);
 
+	MemStat();
+
 	if (cfg::sds_read) {
-		serialSDS.begin(9600, PM_SERIAL_RX, PM_SERIAL_TX, SWSERIAL_8N1, false, 256 );    // for SW UART SDS
+		serialSDS.begin(9600, PM_SERIAL_RX,  PM_SERIAL_TX,  SWSERIAL_8N1, false, 512 );    // for SW UART SDS
 	}
 
+	MemStat();
+
 	if (cfg::pms_read) {
-		serialPMS.begin(9600, PM2_SERIAL_RX, PM2_SERIAL_TX, SWSERIAL_8N1, false, 256 ); // for SW UART PMS
+		serialPMS.begin(9600, PM2_SERIAL_RX, PM2_SERIAL_TX, SWSERIAL_8N1, false, 512 ); // for SW UART PMS
 	}
+
+	MemStat();
 
 	if (cfg::gps_read) {
 		serialGPS.begin(9600, SERIAL_8N1, GPS_SERIAL_RX, GPS_SERIAL_TX);			 	// for HW UART DPS
@@ -4411,6 +4431,8 @@ void setup() {
 
 	logEnabledAPIs();
 	logEnabledDisplays();
+
+	MemStat();
 
 	String server_name = F("PM-");
 	server_name += esp_chipid;
@@ -4426,6 +4448,7 @@ void setup() {
 	next_display_millis = starttime + DISPLAY_UPDATE_INTERVAL_MS;
 
 #ifdef CFG_SQL
+	MemStat();
 
 	SD.begin();
 
@@ -4473,7 +4496,6 @@ void setup() {
 				if (!db_open(DB_PATH, &db))
 					{
 
-					}
 					rc = db_exec(db, "PRAGMA page_size = 512;");
 					if (rc != SQLITE_OK) {
 						 Serial.println("PRAGMA page_size set failure");
@@ -4515,6 +4537,8 @@ void setup() {
 			}
 		}
 	}
+
+	MemStat();
 
 
 #endif
@@ -5270,6 +5294,10 @@ void loop() {
 		count_sends += 1;
 
 		after_send = true;
+
+		debug_out("MemStat after cycle:", DEBUG_MIN_INFO, 1);
+		MemStat();
+
 	}
 
 	yield();
