@@ -1,3 +1,6 @@
+#pragma once
+
+
 const char TXT_CONTENT_TYPE_JSON[] PROGMEM = "application/json";
 const char TXT_CONTENT_TYPE_INFLUXDB[] PROGMEM = "application/x-www-form-urlencoded";
 const char TXT_CONTENT_TYPE_TEXT_HTML[] PROGMEM = "text/html; charset=utf-8";

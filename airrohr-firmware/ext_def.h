@@ -1,9 +1,21 @@
+#pragma once
+
 // Language config
 #define CURRENT_LANG INTL_LANG
 
 // Wifi config
-#define WLANSSID   "WIFI_ssid"     
-#define WLANPWD    "WIFI_passw"   
+//#define WLANSSID   ***REMOVED***
+//#define WLANPWD    ***REMOVED***
+
+//  #define WLANSSID   ***REMOVED***
+//  #define WLANPWD    ***REMOVED***
+
+  #define WLANSSID   ***REMOVED***
+  #define WLANPWD    ***REMOVED***
+
+//#define WLANSSID   ***REMOVED***
+//#define WLANPWD    ***REMOVED***
+
 
 // BasicAuth config
 #define WWW_USERNAME "admin"
@@ -12,25 +24,25 @@
 
 #ifdef CFG_GSHEET
   // Replace with your own script id to make server side changes
-  const char *GScriptId = "Replace with your own script id";
+const char *GScriptId = ***REMOVED***;
 #endif
   
 // Sensor Wifi config (config mode)
-#define FS_SSID ""
-#define FS_PWD  ""
+#define FS_SSID ""//***REMOVED***
+#define FS_PWD  ""//***REMOVED***
 
 // Wohin gehen die Daten?
-#define SEND2DUSTI 0
-#define SSL_DUSTI 0
-#define SEND2MADAVI 0
-#define SSL_MADAVI 0
-#define SEND2SENSEMAP 0
-#define SEND2FSAPP 0
-#define SEND2MQTT 0
-#define SEND2INFLUX 0
-#define SEND2LORA 0
-#define SEND2CSV 0
-#define SEND2CUSTOM 0
+#define SEND2DUSTI 		0
+#define SSL_DUSTI 		0
+#define SEND2MADAVI 	0
+#define SSL_MADAVI 		0
+#define SEND2SENSEMAP 	0
+#define SEND2FSAPP 		0
+#define SEND2MQTT 		0
+#define SEND2INFLUX 	0
+#define SEND2LORA 		0
+#define SEND2CSV 		0
+#define SEND2CUSTOM 	0
 
 // NTP Server
 #define NTP_SERVER "0.europe.pool.ntp.org"
@@ -87,17 +99,19 @@
 
 #if defined(ESP32)
 
-  #define PM_SERIAL_RX    32
-  #define PM_SERIAL_TX    33
-  
-  #define PM2_SERIAL_RX   25
-  #define PM2_SERIAL_TX   26
-  
-  #define GPS_SERIAL_RX   16 
-  #define GPS_SERIAL_TX   17
+	#define PM_SERIAL_RX    35	// SDS
+	#define PM_SERIAL_TX    32	// SDS
 
+	#define PM2_SERIAL_RX   25  // PMS
+	#define PM2_SERIAL_TX   26	// PMS
+
+	#define GPS_SERIAL_RX   16
+	#define GPS_SERIAL_TX   17
+
+	#define BUT_A 			2
+	#define BUT_B 			4
   
-  #define ONEWIRE_PIN     12
+	//#define ONEWIRE_PIN     12
 
 #endif
 
@@ -113,7 +127,7 @@
 
 #define PPD_READ 0
 #ifdef CFG_PPD
-// PPD42NS, der günstigere der beiden Feinstaubsensoren
+// PPD42NS, dergnstigere der beiden Feinstaubsensoren
 #define PPD_API_PIN 5
   #if defined(ARDUINO_SAMD_ZERO) || defined(ESP8266)
   #define PPD_PIN_PM1 D6
@@ -134,7 +148,7 @@
 #define HPM_API_PIN 1
 
 // BMP180, temperature, pressure
-#define BMP_READ 1
+#define BMP_READ 0
 #define BMP_API_PIN 3
 
 // BMP280, temperature, pressure
@@ -142,7 +156,7 @@
 #define BMP280_API_PIN 3
 
 // BME280, temperature, humidity, pressure
-#define BME280_READ 0
+#define BME280_READ 1
 #define BME280_API_PIN 11
 
 // DS18B20, temperature
@@ -175,7 +189,7 @@
 // LCD Display LCD2004 (0x27) angeschlossen?
 #define HAS_LCD2004_27 0
 
-// Wieviele Informationen sollen über die serielle Schnittstelle ausgegeben werden?
+// Wieviele Informationen sollenber die serielle Schnittstelle ausgegeben werden?
 #define DEBUG 3
 
 // Definition der Debuglevel
@@ -245,15 +259,14 @@ static const uint16_t suites[] PROGMEM = {
 #define OLED_SCL    22
 #define OLED_RST    -1
 
-#define CONFIG_MOSI 27
-#define CONFIG_MISO 19
-#define CONFIG_CLK  5
-#define CONFIG_NSS  18
-#define CONFIG_RST  23
-#define CONFIG_DIO0 26
+#define SDCARD_MOSI 23
+#define SDCARD_MISO 19
+#define SDCARD_SCLK 18
+#define SDCARD_CS   5
 
-#define SDCARD_MOSI 15
-#define SDCARD_MISO 2
-#define SDCARD_SCLK 14
-#define SDCARD_CS   13
+
+
+
 #endif
+
+

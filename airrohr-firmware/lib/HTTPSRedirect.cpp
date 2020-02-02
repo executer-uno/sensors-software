@@ -6,6 +6,9 @@
  *  All rights reserved.
  *
  */
+#include "SoftwareSerial.h"
+extern	SoftwareSerial Serial;
+
 
 #include "HTTPSRedirect.h"
 #include "DebugMacros.h"
@@ -31,18 +34,18 @@ void HTTPSRedirect::Init(void){
 // This is the main function which is similar to the method
 // print() from WifiClient or WifiClientSecure
 bool HTTPSRedirect::printRedir(void){
-  unsigned int httpStatus;
+	unsigned int httpStatus;
 
 
-    // Recursive call to the requested URL on the server
-    Serial.println("Call recursively printRedir()");
-          Serial.print("HTTPS Free Heap/Stack:");
-          Serial.print(ESP.getFreeHeap(),DEC);
-          Serial.print(" / ");
-          //Serial.println(ESP.getFreeContStack(),DEC);  
-          //wdt_reset(); // nodemcu is alive
-          yield();
-          Serial.println("Yeld called from HTTPS redir 45");  // debug stuck
+	// Recursive call to the requested URL on the server
+	Serial.println("Call recursively printRedir()");
+	//          Serial.print("HTTPS Free Heap/Stack:");
+	//          Serial.print(ESP.getFreeHeap(),DEC);
+	//          Serial.print(" / ");
+	//          //Serial.println(ESP.getFreeContStack(),DEC);
+	//          //wdt_reset(); // nodemcu is alive
+	//          yield();
+	//          Serial.println("Yeld called from HTTPS redir 45");  // debug stuck
 
 
   
@@ -276,7 +279,7 @@ void HTTPSRedirect::fetchBodyUnChunked(unsigned len){
     // Decrement once more to account for the '\n' line ending character
     --len;
 
-    if (_printResponseBody)
+    //if (_printResponseBody)
       Serial.println(line);
 
     _myResponse.body += line;
@@ -309,7 +312,7 @@ void HTTPSRedirect::fetchBodyChunked(void){
     
     while (chunkSize > 0){
       line = readStringUntil('\n');
-      if (_printResponseBody)
+      //if (_printResponseBody)
         Serial.println(line);
 
       _myResponse.body += line;

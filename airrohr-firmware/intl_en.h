@@ -8,6 +8,8 @@
  *	We only have 512 kB for the entire firmware
  */
 
+#pragma once
+
 const char INTL_LANG[] = "EN";
 const char INTL_PM_SENSOR[] PROGMEM = "Particulate matter sensor";
 const char INTL_CONFIGURATION[] PROGMEM = "Configuration";
