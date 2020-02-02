@@ -4473,6 +4473,16 @@ void setup() {
 				if (!db_open(DB_PATH, &db))
 					{
 
+					}
+					rc = db_exec(db, "PRAGMA page_size = 512;");
+					if (rc != SQLITE_OK) {
+						 Serial.println("PRAGMA page_size set failure");
+					}
+
+					rc = db_exec(db, "PRAGMA default_cache_size = 200; PRAGMA cache_size = 200;");
+					if (rc != SQLITE_OK) {
+						 Serial.println("PRAGMA default_cache_size set failure");
+					}
 
 					rc = db_exec(db, "CREATE TABLE IF NOT EXISTS measurements (date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL);");
 					if (rc != SQLITE_OK) {
