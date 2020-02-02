@@ -14,4 +14,13 @@ builds/*
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .travis.yml
-cleanup.txt
+/sloeber.ino.cpp
+/ppd42ns-wificonfig-ppd-sds-dht.spiffs.bin
+
+.cproject
+.project
+.settings/
+astyle.rc
+spec.d
+**cleanup.txt
+astyle.rc
