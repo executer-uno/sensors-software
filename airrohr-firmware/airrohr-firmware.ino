@@ -3,8 +3,6 @@
 #include <Arduino.h>
 
 
-
-
 #define  NO_GLOBAL_SERIAL
 // in sloeber need to add attribute in
 // project properties/arduino/Compiler options/Add for C and C++
@@ -103,14 +101,14 @@
  *
  * 06.07.2018
  * Der Sketch verwendet 459607 Bytes (44%) des Programmspeicherplatzes. Das Maximum sind 1044464 Bytes.
- * Globale Variablen verwenden 48736 Bytes (59%) des dynamischen Speichers, 33184 Bytes fÃƒÂ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
+ * Globale Variablen verwenden 48736 Bytes (59%) des dynamischen Speichers, 33184 Bytes fÃƒ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  * first version with esp8266 lib 2.4.2
  * Der Sketch verwendet 491364 Bytes (47%) des Programmspeicherplatzes. Das Maximum sind 1044464 Bytes.
- * Globale Variablen verwenden 37172 Bytes (45%) des dynamischen Speichers, 44748 Bytes fÃƒÂ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
+ * Globale Variablen verwenden 37172 Bytes (45%) des dynamischen Speichers, 44748 Bytes fÃƒ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  * Der Sketch verwendet 489152 Bytes (46%) des Programmspeicherplatzes. Das Maximum sind 1044464 Bytes.
- * Globale Variablen verwenden 37160 Bytes (45%) des dynamischen Speichers, 44760 Bytes fÃƒÂ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
+ * Globale Variablen verwenden 37160 Bytes (45%) des dynamischen Speichers, 44760 Bytes fÃƒ¼r lokale Variablen verbleiben. Das Maximum sind 81920 Bytes.
  *
  ************************************************************************/
 
@@ -449,7 +447,7 @@ bool bme280_init_failed = false;
 	ESP8266WebServer server(80);
 #endif
 
-int TimeZone = 1;
+int TimeZone = 2;
 
 #ifdef CFG_LCD
 /*****************************************************************
@@ -629,6 +627,8 @@ bool got_ntp = false;
 unsigned long count_sends = 0;
 unsigned long next_display_millis = 0;
 unsigned long next_display_count = 0;
+
+unsigned long timeUpdate=0;
 
 // Led blink delay
 // unsigned long LEDoff_millis = 0;
@@ -1467,7 +1467,6 @@ String form_select_lang() {
 					"<option value='IT'{s_IT}>Italiano (IT)</option>"
 					"<option value='NL'{s_NL}>Nederlands (NL)</option>"
 					"<option value='PL'{s_PL}>Polski (PL)</option>"
-					"<option value='PT'{s_PT}>PortuguÃƒÂªs (PT)</option>"
 					"<option value='SE'{s_SE}>Svenska (SE)</option>"
 					"</select>"
 					"</td>"
@@ -2074,8 +2073,8 @@ void webserver_values() {
 		}
 		if (cfg::gps_read) {
 			page_content += FPSTR(EMPTY_ROW);
-			page_content += table_row_from_value("GPS", FPSTR(INTL_LATITUDE), check_display_value(last_value_GPS_lat, -200.0, 6, 0), "Â°");
-			page_content += table_row_from_value("GPS", FPSTR(INTL_LONGITUDE), check_display_value(last_value_GPS_lon, -200.0, 6, 0), "Â°");
+			page_content += table_row_from_value("GPS", FPSTR(INTL_LATITUDE), check_display_value(last_value_GPS_lat, -200.0, 6, 0), "°");
+			page_content += table_row_from_value("GPS", FPSTR(INTL_LONGITUDE), check_display_value(last_value_GPS_lon, -200.0, 6, 0), "°");
 			page_content += table_row_from_value("GPS", FPSTR(INTL_ALTITUDE),	check_display_value(last_value_GPS_alt, -1000.0, 2, 0), "m");
 			page_content += table_row_from_value("GPS", FPSTR(INTL_DATE), last_value_GPS_date, "");
 			page_content += table_row_from_value("GPS", FPSTR(INTL_TIME), last_value_GPS_time, "");
@@ -2752,7 +2751,7 @@ static String sensorDHT() {
 			debug_out(String(FPSTR(SENSORS_DHT22)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
 		} else {
 			debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-			debug_out(String(t) + u8"Â°C", DEBUG_MIN_INFO, 1);
+			debug_out(String(t) + u8"°C", DEBUG_MIN_INFO, 1);
 			debug_out(FPSTR(DBG_TXT_HUMIDITY), DEBUG_MIN_INFO, 0);
 			debug_out(String(h) + "%", DEBUG_MIN_INFO, 1);
 			last_value_DHT_T = t;
@@ -3585,6 +3584,39 @@ String sensorGPS() {
 			} else {
 				debug_out(F("Date INVALID"), DEBUG_MAX_INFO, 1);
 			}
+
+			// gps.time.hour() resets Updated flag!
+			if(gps.time.isUpdated() && (timeUpdate < millis() )){
+				// Set time from GPS
+			    time_t t_of_day;
+			    struct tm t;
+			    timeval epoch;
+			    const timeval *tv = &epoch;
+			    timezone utc = {0,TimeZone};
+			    const timezone *tz = &utc;
+
+			    t.tm_year = gps.date.year()-1900;
+			    t.tm_mon  = gps.date.month()-1;           // Month, 0 - jan
+			    t.tm_mday = gps.date.day();               // Day of the month
+			    t.tm_hour = gps.time.hour();
+			    t.tm_min  = gps.time.minute();
+			    t.tm_sec  = gps.time.second();
+			    t_of_day  = mktime(&t);
+
+			    epoch = {t_of_day, 0};
+
+			    settimeofday(tv, tz);
+
+				debug_out(F("GPS Time setted"), DEBUG_MAX_INFO, 1);
+				got_ntp = true;
+				timeUpdate = millis() + 300000;
+
+				struct tm now;
+				getLocalTime(&now,0);
+				Serial.println(&now," %B %d %Y %H:%M:%S (%A)");
+
+			}
+
 			if (gps.time.isValid()) {
 				String gps_time = "";
 				if (gps.time.hour() < 10) {
@@ -3610,31 +3642,7 @@ String sensorGPS() {
 			} else {
 				debug_out(F("Time: INVALID"), DEBUG_MAX_INFO, 1);
 			}
-			if(gps.time.isUpdated() && !got_ntp ){
-				// Set time from GPS
-			    time_t t_of_day;
-			    struct tm t;
-			    timeval epoch;
-			    const timeval *tv = &epoch;
-			    timezone utc = {0,0};
-			    const timezone *tz = &utc;
 
-			    t.tm_year = gps.date.year()-1900;
-			    t.tm_mon  = gps.date.month()-1;           // Month, 0 - jan
-			    t.tm_mday = gps.date.day();               // Day of the month
-			    t.tm_hour = gps.time.hour();
-			    t.tm_min  = gps.time.minute();
-			    t.tm_sec  = gps.time.second();
-			    t_of_day  = mktime(&t);
-
-			    epoch = {t_of_day, 0};
-
-			    settimeofday(tv, tz);
-			    got_ntp = true;
-
-				debug_out(F("GPS Time setted."), DEBUG_MAX_INFO, 1);
-
-			}
 		}
 	}
 
@@ -3840,9 +3848,9 @@ void display_values() {
 			if (pm25_sensor != pm10_sensor) {
 				display_header += " / " + pm25_sensor;
 			}
-			display_lines[0] = "PM  0.1:  "  + check_display_value(pm01_value, -1, 1, 6) + " Âµg/mÂ³";
-			display_lines[1] = "PM  2.5:  "  + check_display_value(pm25_value, -1, 1, 6) + " Âµg/mÂ³";
-			display_lines[2] = "PM 10.0:  "  + check_display_value(pm10_value, -1, 1, 6) + " Âµg/mÂ³";
+			display_lines[0] = "PM  0.1:  "  + check_display_value(pm01_value, -1, 1, 6) + " µg/m³";
+			display_lines[1] = "PM  2.5:  "  + check_display_value(pm25_value, -1, 1, 6) + " µg/m³";
+			display_lines[2] = "PM 10.0:  "  + check_display_value(pm10_value, -1, 1, 6) + " µg/m³";
 			break;
 
 		case (2):
@@ -3850,8 +3858,8 @@ void display_values() {
 			if (sds25_sensor != sds10_sensor) {
 				display_header += " / " + sds25_sensor;
 			}
-			display_lines[0] = "PM  2.5:  " + check_display_value(sds25_value, -1, 1, 6) + " Âµg/mÂ³";
-			display_lines[1] = "PM 10.0:  " + check_display_value(sds10_value, -1, 1, 6) + " Âµg/mÂ³";
+			display_lines[0] = "PM  2.5:  " + check_display_value(sds25_value, -1, 1, 6) + " µg/m³";
+			display_lines[1] = "PM 10.0:  " + check_display_value(sds10_value, -1, 1, 6) + " µg/m³";
 			display_lines[2] = "";
 			break;
 
@@ -3863,7 +3871,7 @@ void display_values() {
 			if ((h_sensor != "" && p_sensor != "" && (h_sensor != p_sensor)) || (h_sensor == "" && p_sensor != "" && (t_sensor != p_sensor))) {
 				display_header += " / " + p_sensor;
 			}
-			if (t_sensor != "") { display_lines[line_count++] = "Temp.: " + check_display_value(t_value, -128, 1, 6) + " Â°C"; }
+			if (t_sensor != "") { display_lines[line_count++] = "Temp.: " + check_display_value(t_value, -128, 1, 6) + " °C"; }
 			if (h_sensor != "") { display_lines[line_count++] = "Hum.:	" + check_display_value(h_value, -1, 1, 6) + " %"; }
 			if (p_sensor != "") { display_lines[line_count++] = "Pres.: " + check_display_value(p_value / 100, (-1 / 100.0), 1, 6) + " hPa"; }
 			while (line_count < 3) { display_lines[line_count++] = ""; }
@@ -3942,9 +3950,9 @@ void display_values() {
 		}
 		if (cfg::has_lcd2004_27) {
 			display_header = String((next_display_count % screen_count) + 1) + "/" + String(screen_count) + " " + display_header;
-			display_lines[0].replace(" Âµg/mÂ³", "");
-			display_lines[0].replace("Â°", String(char(223)));
-			display_lines[1].replace(" Âµg/mÂ³", "");
+			display_lines[0].replace(" µg/m³", "");
+			display_lines[0].replace("°", String(char(223)));
+			display_lines[1].replace(" µg/m³", "");
 			lcd_2004_27.clear();
 			lcd_2004_27.setCursor(0, 0);
 			lcd_2004_27.print(display_header);
@@ -3959,8 +3967,8 @@ void display_values() {
 
 // ----5----0----5----0
 // PM10/2.5: 1999/999
-// T/H: -10.0Â°C/100.0%
-// T/P: -10.0Â°C/1000hPa
+// T/H: -10.0°C/100.0%
+// T/P: -10.0°C/1000hPa
 
 	switch (screens[next_display_count % screen_count]) {
 	case (1):
@@ -4355,6 +4363,10 @@ void setup() {
 	Serial.begin(74880);					// Output to Serial at 9600 baud
 	#endif
 
+
+	setenv("TZ", TZ_INFO, 1);
+	tzset(); // Assign the local timezone from setenv
+
 	// Configure buttons
 	pinMode(BUT_A, INPUT_PULLDOWN);
 	pinMode(BUT_B, INPUT_PULLUP);
@@ -4375,21 +4387,15 @@ void setup() {
 	cfg::initNonTrivials(esp_chipid.c_str());
 	readConfig();
 
-	MemStat();
-
 	if (cfg::sds_read) {
 		serialSDS.begin(9600, SERIAL_8N1, PM_SERIAL_RX,  PM_SERIAL_TX);			 		// for HW UART SDS
 	}
 
-	MemStat();
-
-	if (cfg::pms_read) {
+		if (cfg::pms_read) {
 		serialPMS.begin(9600, SERIAL_8N1, PM2_SERIAL_RX, PM2_SERIAL_TX);			 	// for HW UART PMS
 	}
 
-	MemStat();
-
-	if (cfg::gps_read) {
+		if (cfg::gps_read) {
 		serialGPS.begin(9600, SERIAL_8N1, GPS_SERIAL_RX, GPS_SERIAL_TX);			 	// for HW UART GPS
 	}
 
@@ -4402,8 +4408,6 @@ void setup() {
 	WDT_last_loop = millis();
 	tickerOSWatch.attach_ms(((OSWATCH_RESET_TIME / 3) * 1000), osWatch);
 
-	MemStat();
-
 #ifdef CFG_LCD
 	init_display();
 	//init_lcd();
@@ -4415,8 +4419,6 @@ void setup() {
 	connectWifi();
 
 	create_basic_auth_strings();
-
-	MemStat();
 
 
 	if ((WiFi.status() == WL_CONNECTED) && !got_ntp) {
@@ -4436,8 +4438,6 @@ void setup() {
 	logEnabledAPIs();
 	logEnabledDisplays();
 
-	MemStat();
-
 	String server_name = F("PM-");
 	server_name += esp_chipid;
 	if (MDNS.begin(server_name.c_str())) {
@@ -4452,7 +4452,6 @@ void setup() {
 	next_display_millis = starttime + DISPLAY_UPDATE_INTERVAL_MS;
 
 #ifdef CFG_SQL
-	MemStat();
 
 	SD.begin();
 
@@ -4541,8 +4540,6 @@ void setup() {
 			}
 		}
 	}
-
-	MemStat();
 
 
 #endif
@@ -4869,7 +4866,6 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 					}
 #endif
 				}
-				MemStat();
 
 				// delete HTTPSRedirect object
 				delete client;
