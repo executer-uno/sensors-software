@@ -616,6 +616,8 @@ String last_value_GPS_date = "";
 String last_value_GPS_time = "";
 String last_data_string = "";
 
+double values_PMS[130] = {0.0};
+
 String esp_chipid;
 
 long last_page_load = millis();
@@ -3299,6 +3301,13 @@ String sensorPMS() {
 			s += Value2Json("PMS_P0", Float2String(last_value_PMS_P0));
 			s += Value2Json("PMS_P1", Float2String(last_value_PMS_P1));
 			s += Value2Json("PMS_P2", Float2String(last_value_PMS_P2));
+
+			// Shift log buffer
+			for(int i=sizeof(values_PMS); i>0; i--){
+				values_PMS[i] = values_PMS[i-1];
+			}
+			values_PMS[0] = last_value_PMS_P1;
+
 		}
 		pms_pm1_sum = 0;
 		pms_pm10_sum = 0;
@@ -3848,11 +3857,8 @@ void display_values() {
 		alt_value = last_value_GPS_alt;
 		gps_sensor = "NEO6M";
 	}
-	if (cfg::ppd_read || cfg::pms_read || cfg::hpm_read) {
+	if (cfg::ppd_read || cfg::pms_read || cfg::hpm_read || cfg::sds_read) {
 		screens[screen_count++] = 1;
-	}
-	if (cfg::sds_read) {
-		screens[screen_count++] = 2;
 	}
 	if (cfg::dht_read || cfg::ds18b20_read || cfg::htu21d_read || cfg::bmp_read || cfg::bmp280_read || cfg::bme280_read) {
 		screens[screen_count++] = 3;
@@ -3862,18 +3868,17 @@ void display_values() {
 	}
 	screens[screen_count++] = 5;	// Wifi info
 	screens[screen_count++] = 6;	// chipID, firmware and count of measurements
+	screens[screen_count++] = 11;	// Trend, GPS, Values
 
 	if (cfg::has_display || cfg::has_sh1106 || cfg::has_lcd2004_27) {
 		switch (screens[next_display_count % screen_count]) {
 
 		case (1):
-			display_header = pm25_sensor;
-			if (pm25_sensor != pm10_sensor) {
-				display_header += " / " + pm25_sensor;
-			}
-			display_lines[0] = "PM  0.1:  "  + check_display_value(pm01_value, -1, 1, 6) + " µg/m³";
-			display_lines[1] = "PM  2.5:  "  + check_display_value(pm25_value, -1, 1, 6) + " µg/m³";
-			display_lines[2] = "PM 10.0:  "  + check_display_value(pm10_value, -1, 1, 6) + " µg/m³";
+			display_header = pm25_sensor + sds25_sensor;
+
+			display_lines[0] = "PM  0.1:  "  + check_display_value(pm01_value, -1, 1, 6) + ";" + " ---- " 									+ " µg/m³";
+			display_lines[1] = "PM  2.5:  "  + check_display_value(pm25_value, -1, 1, 6) + ";" + check_display_value(sds25_value, -1, 1, 6) + " µg/m³";
+			display_lines[2] = "PM 10.0:  "  + check_display_value(pm10_value, -1, 1, 6) + ";" + check_display_value(sds10_value, -1, 1, 6) + " µg/m³";
 			break;
 
 		case (2):
@@ -3922,6 +3927,10 @@ void display_values() {
 			display_lines[1] = "FW: " + String(SOFTWARE_VERSION);
 			display_lines[2] = "Meas: " + String(count_sends) + " Since last: " + String((long)((msSince(starttime) + 500) / 1000)) + " s.";
 			break;
+		case (11):
+			display_header = "GPS is " + (GPS_EN ? "On" : "Off");
+
+			break;
 		}
 
 		if (cfg::has_display) {
@@ -3929,30 +3938,42 @@ void display_values() {
 			display.displayOn();
 			display.setTextAlignment(TEXT_ALIGN_CENTER);
 			display.drawString(64, 0, display_header);		// one pixel up
-			display.setTextAlignment(TEXT_ALIGN_LEFT);
-			display.drawString(0, 12, display_lines[0]);	// up to three pixels (display with two colour fields with small gap between)
-			display.drawString(0, 24, display_lines[1]);
-			display.drawString(0, 36, display_lines[2]);
-#ifdef CFG_SQL
-			display.drawString(0, 52, "DB:" + String(rec_count));
-#endif
-			display.setTextAlignment(TEXT_ALIGN_CENTER);
-			display.drawString(64, 52, displayGenerateFooter(screen_count));
 
-			// Show time on display
-			struct tm timeinfo;
-			if(got_ntp){
-				if (getLocalTime(&timeinfo)) {
-					char timeStringBuff[10];
-					strftime(timeStringBuff, sizeof(timeStringBuff), "%H:%M:%S", &timeinfo);
-					display.drawString(108, 52, String(timeStringBuff));
+			if(screens[next_display_count % screen_count] < 10){
+				display.setTextAlignment(TEXT_ALIGN_LEFT);
+				display.drawString(0, 12, display_lines[0]);	// up to three pixels (display with two colour fields with small gap between)
+				display.drawString(0, 24, display_lines[1]);
+				display.drawString(0, 36, display_lines[2]);
+	#ifdef CFG_SQL
+				display.drawString(0, 52, "DB:" + String(rec_count));
+	#endif
+				display.setTextAlignment(TEXT_ALIGN_CENTER);
+				display.drawString(64, 52, displayGenerateFooter(screen_count));
+
+				// Show time on display
+				struct tm timeinfo;
+				if(got_ntp){
+					if (getLocalTime(&timeinfo)) {
+						char timeStringBuff[10];
+						strftime(timeStringBuff, sizeof(timeStringBuff), "%H:%M:%S", &timeinfo);
+						display.drawString(108, 52, String(timeStringBuff));
+					}
+					else{
+						display.drawString(108, 52, "-- -- --");
+					}
 				}
 				else{
 					display.drawString(108, 52, "-- -- --");
 				}
 			}
 			else{
-				display.drawString(108, 52, "-- -- --");
+				for(int i=0; i<display.getWidth(); i++){
+					int16_t Y=0;
+
+					Y = (int16_t)values_PMS[i]/2.0;
+					Y = (Y>54 ? 54 : Y;);
+					display.setPixel(i, Y);
+				}
 			}
 
 
