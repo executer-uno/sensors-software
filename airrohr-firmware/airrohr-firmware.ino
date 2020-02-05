@@ -193,41 +193,9 @@
 	#include "SPIFFS.h"
 	#include "time.h"
 
-#else
-	#include <ESP8266WiFi.h>
-	#include <ESP8266WebServer.h>
-	#include <ESP8266mDNS.h>
-	#ifdef CFG_UPDATE
-		#include <ESP8266httpUpdate.h>
-	#endif
-	//#include <WiFiClientSecure.h>
-	//#include <WiFiClientSecureBearSSL.h>
 #endif
 
 #include <DNSServer.h>
-
-
-
-#ifdef ESP32
-	// to use all three hardware serial ports we need to apply patch ( https://youtu.be/GwShqW39jlE ):
-	// C:\Users\E_CAD\AppData\Local\Arduino15\packages\esp32\hardware\esp32\1.0.3\cores\esp32\HardwareSerial.cpp
-	// Looks like it is already applyed in librarys
-
-	//#define RX1 PM_SERIAL_RX
-	//#define TX1 PM_SERIAL_TX
-
-	//#define RX2 GPS_SERIAL_RX
-	//#define TX2 GPS_SERIAL_TX
-
-	//https://github.com/plerup/espsoftwareserial ESP32 Software serial:
-	//#include <SoftwareSerial.h>
-
-
-//#else
-	//#include <SoftwareSerial.h>
-#endif
-
-
 
 #ifdef CFG_LCD
 #include "./oledfont.h"				// avoids including the default Arial font, needs to be included before SSD1306.h
@@ -239,25 +207,8 @@
 #include <base64.h>
 #include <ArduinoJson.h>
 
-#ifdef CFG_DHT
-#include "./DHT.h"
-#endif
-
-#ifdef CFG_PT_ADD
-#include <Adafruit_HTU21DF.h>
-#include <Adafruit_BMP280.h>
-#endif
-
-#ifdef CFG_BMP180
-#include <Adafruit_BMP085.h>
-#endif
-
 #ifdef CFG_BME280
 #include <Adafruit_BME280.h>
-#endif
-
-#ifdef CFG_DALLAS
-#include <DallasTemperature.h>
 #endif
 
 #ifdef CFG_GPS
@@ -265,9 +216,6 @@
 #endif
 
 #include <time.h>
-#ifndef ESP32
-	#include <coredecls.h>
-#endif
 #include <assert.h>
 
 #ifdef CFG_GSHEET
@@ -443,8 +391,6 @@ bool bme280_init_failed = false;
 
 #ifdef ESP32
 	WebServer server(80);
-#else
-	ESP8266WebServer server(80);
 #endif
 
 int TimeZone = 2;
@@ -455,10 +401,7 @@ String time_str = "";
  * Display definitions																					 *
  *****************************************************************/
 SSD1306 display(0x3c, I2C_PIN_SDA, I2C_PIN_SCL); // OLED_ADDRESS
-//SH1106 display_sh1106(0x3c, I2C_PIN_SDA, I2C_PIN_SCL);						// sketch too big
-//LiquidCrystal_I2C lcd_1602_27(0x27, 16, 2);
-//LiquidCrystal_I2C lcd_1602_3f(0x3F, 16, 2);
-//LiquidCrystal_I2C lcd_2004_27(0x27, 20, 4);
+
 #endif
 
 /*****************************************************************
@@ -475,47 +418,13 @@ SSD1306 display(0x3c, I2C_PIN_SDA, I2C_PIN_SCL); // OLED_ADDRESS
 	SoftwareSerial serialGPS(GPS_SERIAL_RX, GPS_SERIAL_TX, false, 512);
 #endif
 
-#ifdef CFG_DHT
-/*****************************************************************
- * DHT declaration																							 *
- *****************************************************************/
-DHT dht(ONEWIRE_PIN, DHT_TYPE);
-#endif
 
-#ifdef CFG_PT_ADD
-/*****************************************************************
- * HTU21D declaration																						*
- *****************************************************************/
-Adafruit_HTU21DF htu21d;
-
-
-
-/*****************************************************************
- * BMP280 declaration																							 *
- *****************************************************************/
-Adafruit_BMP280 bmp280;
-#endif
-
-#ifdef CFG_BMP180
-/*****************************************************************
- * BMP declaration																							 *
- *****************************************************************/
-Adafruit_BMP085 bmp;
-#endif
 
 #ifdef CFG_BME280
 /*****************************************************************
  * BME280 declaration																						*
  *****************************************************************/
 Adafruit_BME280 bme280;
-#endif
-
-#ifdef CFG_DALLAS
-/*****************************************************************
- * DS18B20 declaration																						*
- *****************************************************************/
-OneWire oneWire(ONEWIRE_PIN);
-DallasTemperature ds18b20(&oneWire);
 #endif
 
 #ifdef CFG_GPS
@@ -744,25 +653,6 @@ const char data_first_part[] PROGMEM = "{\"software_version\": \"{v}\", \"sensor
 
 
 
-
-#ifndef ESP32
-/*****************************************************************
- * Heap state debug																							*
- *****************************************************************/
-void stats(const char* what) {
-	// we could use getFreeHeap() getMaxFreeBlockSize() and getHeapFragmentation()
-	// or all at once:
-	uint32_t free;
-	uint16_t max;
-	uint8_t frag;
-	ESP.getHeapStats(&free, &max, &frag);
-
-	Serial.printf("free: %5d - max: %5d - frag: %3d%% <- ", free, max, frag);
-	// %s requires a malloc that could fail, using println instead:
-	Serial.println(what);
-}
-#endif
-
 /*****************************************************************
  * Custom WDT interrupt																					*
  *****************************************************************/
@@ -810,39 +700,6 @@ void display_debug(const String& text1, const String& text2) {
 		display.drawString(0, 24, text2);
 		display.display();
 	}
- /*
-	if (cfg::has_sh1106) {
-		display_sh1106.clear();
-		display_sh1106.displayOn();
-		display_sh1106.setTextAlignment(TEXT_ALIGN_LEFT);
-		display_sh1106.drawString(0, 12, text1);
-		display_sh1106.drawString(0, 24, text2);
-		display_sh1106.display();
-	}
-
-
-	if (cfg::has_lcd1602) {
-		lcd_1602_3f.clear();
-		lcd_1602_3f.setCursor(0, 0);
-		lcd_1602_3f.print(text1);
-		lcd_1602_3f.setCursor(0, 1);
-		lcd_1602_3f.print(text2);
-	}
-	if (cfg::has_lcd1602_27) {
-		lcd_1602_27.clear();
-		lcd_1602_27.setCursor(0, 0);
-		lcd_1602_27.print(text1);
-		lcd_1602_27.setCursor(0, 1);
-		lcd_1602_27.print(text2);
-	}
-	if (cfg::has_lcd2004_27) {
-		lcd_2004_27.clear();
-		lcd_2004_27.setCursor(0, 0);
-		lcd_2004_27.print(text1);
-		lcd_2004_27.setCursor(0, 1);
-		lcd_2004_27.print(text2);
-	}
- */
 #endif
 }
 
@@ -2741,113 +2598,7 @@ void send_csv(const String& data) {
 	}
 }
 
-#ifdef CFG_DHT
-/*****************************************************************
- * read DHT22 sensor values																			*
- *****************************************************************/
-static String sensorDHT() {
-	String s;
 
-	debug_out(String(FPSTR(DBG_TXT_START_READING)) + "DHT11/22", DEBUG_MED_INFO, 1);
-
-	// Check if valid number if non NaN (not a number) will be send.
-	last_value_DHT_T = -128;
-	last_value_DHT_H = -1;
-
-	int count = 0;
-	const int MAX_ATTEMPTS = 5;
-	while ((count++ < MAX_ATTEMPTS) && (s == "")) {
-		auto h = dht.readHumidity();
-		auto t = dht.readTemperature();
-		if (isnan(t) || isnan(h)) {
-			delay(100);
-			h = dht.readHumidity();
-			t = dht.readTemperature(false);
-		}
-		if (isnan(t) || isnan(h)) {
-			debug_out(String(FPSTR(SENSORS_DHT22)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
-		} else {
-			debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-			debug_out(String(t) + u8"°C", DEBUG_MIN_INFO, 1);
-			debug_out(FPSTR(DBG_TXT_HUMIDITY), DEBUG_MIN_INFO, 0);
-			debug_out(String(h) + "%", DEBUG_MIN_INFO, 1);
-			last_value_DHT_T = t;
-			last_value_DHT_H = h;
-			s += Value2Json(F("temperature"), Float2String(last_value_DHT_T));
-			s += Value2Json(F("humidity"), Float2String(last_value_DHT_H));
-		}
-	}
-	debug_out("----", DEBUG_MIN_INFO, 1);
-
-	debug_out(String(FPSTR(DBG_TXT_END_READING)) + "DHT11/22", DEBUG_MED_INFO, 1);
-
-	return s;
-}
-#endif
-
-#ifdef CFG_PT_ADD
-/*****************************************************************
- * read HTU21D sensor values																		 *
- *****************************************************************/
-static String sensorHTU21D() {
-	String s;
-
-	debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_HTU21D), DEBUG_MED_INFO, 1);
-
-	const auto t = htu21d.readTemperature();
-	const auto h = htu21d.readHumidity();
-	if (isnan(t) || isnan(h)) {
-		last_value_HTU21D_T = -128.0;
-		last_value_HTU21D_H = -1.0;
-		debug_out(String(FPSTR(SENSORS_HTU21D)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
-	} else {
-		debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(t) + " C", DEBUG_MIN_INFO, 1);
-		debug_out(FPSTR(DBG_TXT_HUMIDITY), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(h) + " %", DEBUG_MIN_INFO, 1);
-		last_value_HTU21D_T = t;
-		last_value_HTU21D_H = h;
-		s += Value2Json(F("HTU21D_temperature"), Float2String(last_value_HTU21D_T));
-		s += Value2Json(F("HTU21D_humidity"), Float2String(last_value_HTU21D_H));
-	}
-	debug_out("----", DEBUG_MIN_INFO, 1);
-
-	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_HTU21D), DEBUG_MED_INFO, 1);
-
-	return s;
-}
-
-/*****************************************************************
- * read BMP280 sensor values																		 *
- *****************************************************************/
-static String sensorBMP280() {
-	String s;
-
-	debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_BMP280), DEBUG_MED_INFO, 1);
-
-	const auto p = bmp280.readPressure();
-	const auto t = bmp280.readTemperature();
-	if (isnan(p) || isnan(t)) {
-		last_value_BMP280_T = -128.0;
-		last_value_BMP280_P = -1.0;
-		debug_out(String(FPSTR(SENSORS_BMP280)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
-	} else {
-		debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-		debug_out(String(t) + " C", DEBUG_MIN_INFO, 1);
-		debug_out(FPSTR(DBG_TXT_PRESSURE), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(p / 100) + " hPa", DEBUG_MIN_INFO, 1);
-		last_value_BMP280_T = t;
-		last_value_BMP280_P = p;
-		s += Value2Json(F("BMP280_pressure"), Float2String(last_value_BMP280_P));
-		s += Value2Json(F("BMP280_temperature"), Float2String(last_value_BMP280_T));
-	}
-	debug_out("----", DEBUG_MIN_INFO, 1);
-
-	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_BMP280), DEBUG_MED_INFO, 1);
-
-	return s;
-}
-#endif
 
 #ifdef CFG_AIn
 /*****************************************************************
@@ -2888,38 +2639,6 @@ static String sensorA0() {
 }
 #endif
 
-#ifdef CFG_BMP180
-/*****************************************************************
- * read BMP180 sensor values																		 *
- *****************************************************************/
-static String sensorBMP() {
-	String s;
-
-	debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_BMP180), DEBUG_MED_INFO, 1);
-
-	const auto p = bmp.readPressure();
-	const auto t = bmp.readTemperature();
-	if (isnan(p) || isnan(t)) {
-		last_value_BMP_T = -128.0;
-		last_value_BMP_P = -1.0;
-		debug_out(String(FPSTR(SENSORS_BMP180)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
-	} else {
-		debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-		debug_out(String(t) + " C", DEBUG_MIN_INFO, 1);
-		debug_out(FPSTR(DBG_TXT_PRESSURE), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(p / 100) + " hPa", DEBUG_MIN_INFO, 1);
-		last_value_BMP_T = t;
-		last_value_BMP_P = p;
-		s += Value2Json(F("BMP_pressure"), Float2String(last_value_BMP_P));
-		s += Value2Json(F("BMP_temperature"), Float2String(last_value_BMP_T));
-	}
-	debug_out("----", DEBUG_MIN_INFO, 1);
-
-	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_BMP180), DEBUG_MED_INFO, 1);
-
-	return s;
-}
-#endif
 
 #ifdef CFG_BME280
 /*****************************************************************
@@ -2956,44 +2675,6 @@ static String sensorBME280() {
 	debug_out("----", DEBUG_MIN_INFO, 1);
 
 	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_BME280), DEBUG_MED_INFO, 1);
-
-	return s;
-}
-#endif
-
-#ifdef CFG_DALLAS
-/*****************************************************************
- * read DS18B20 sensor values																		*
- *****************************************************************/
-static String sensorDS18B20() {
-	double t;
-	debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_DS18B20), DEBUG_MED_INFO, 1);
-
-	//it's very unlikely (-127: impossible) to get these temperatures in reality. Most times this means that the sensor is currently faulty
-	//try 5 times to read the sensor, otherwise fail
-	const int MAX_ATTEMPTS = 5;
-	int count = 0;
-	do {
-		ds18b20.requestTemperatures();
-		//for now, we want to read only the first sensor
-		t = ds18b20.getTempCByIndex(0);
-		++count;
-		debug_out(F("DS18B20 trying...."), DEBUG_MIN_INFO, 0);
-		debug_out(String(count), DEBUG_MIN_INFO, 1);
-	} while (count < MAX_ATTEMPTS && (isnan(t) || t >= 85.0 || t <= (-127.0)));
-
-	String s;
-	if (count == MAX_ATTEMPTS) {
-		last_value_DS18B20_T = -128.0;
-		debug_out(String(FPSTR(SENSORS_DS18B20)) + FPSTR(DBG_TXT_COULDNT_BE_READ), DEBUG_ERROR, 1);
-	} else {
-		debug_out(FPSTR(DBG_TXT_TEMPERATURE), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(t) + " C", DEBUG_MIN_INFO, 1);
-		last_value_DS18B20_T = t;
-		s += Value2Json(F("DS18B20_temperature"), Float2String(last_value_DS18B20_T));
-	}
-	debug_out("----", DEBUG_MIN_INFO, 1);
-	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_DS18B20), DEBUG_MED_INFO, 1);
 
 	return s;
 }
@@ -3473,93 +3154,6 @@ String sensorHPM() {
 	return s;
 }
 
-#ifdef CFG_PPD
-/*****************************************************************
- * read PPD42NS sensor values																		*
- *****************************************************************/
-String sensorPPD() {
-	String s = "";
-
-	debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_PPD42NS), DEBUG_MED_INFO, 1);
-
-	if (msSince(starttime) <= SAMPLETIME_MS) {
-
-		// Read pins connected to ppd42ns
-		boolean valP1 = digitalRead(PPD_PIN_PM1);
-		boolean valP2 = digitalRead(PPD_PIN_PM2);
-
-		if(valP1 == LOW && trigP1 == false) {
-			trigP1 = true;
-			trigOnP1 = act_micro;
-		}
-
-		if (valP1 == HIGH && trigP1 == true) {
-			durationP1 = act_micro - trigOnP1;
-			lowpulseoccupancyP1 = lowpulseoccupancyP1 + durationP1;
-			trigP1 = false;
-		}
-
-		if(valP2 == LOW && trigP2 == false) {
-			trigP2 = true;
-			trigOnP2 = act_micro;
-		}
-
-		if (valP2 == HIGH && trigP2 == true) {
-			durationP2 = act_micro - trigOnP2;
-			lowpulseoccupancyP2 = lowpulseoccupancyP2 + durationP2;
-			trigP2 = false;
-		}
-
-	}
-	// Checking if it is time to sample
-	if (send_now) {
-		const auto calcConcentration = [](double ratio) {
-			/* spec sheet curve*/
-			return (1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) + 520 * ratio + 0.62);
-		};
-
-		last_value_PPD_P1 = -1;
-		last_value_PPD_P2 = -1;
-		double ratio = lowpulseoccupancyP1 / (SAMPLETIME_MS * 10.0);					// int percentage 0 to 100
-		double concentration = calcConcentration(ratio);
-		// Begin printing
-		debug_out(F("LPO P10		: "), DEBUG_MIN_INFO, 0);
-		debug_out(String(lowpulseoccupancyP1), DEBUG_MIN_INFO, 1);
-		debug_out(F("Ratio PM10 : "), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(ratio) + " %", DEBUG_MIN_INFO, 1);
-		debug_out(F("PM10 Count : "), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(concentration), DEBUG_MIN_INFO, 1);
-
-		// json for push to api / P1
-		last_value_PPD_P1 = concentration;
-		s += Value2Json("durP1", String(lowpulseoccupancyP1));
-		s += Value2Json("ratioP1", Float2String(ratio));
-		s += Value2Json("P1", Float2String(last_value_PPD_P1));
-
-		ratio = lowpulseoccupancyP2 / (SAMPLETIME_MS * 10.0);
-		concentration = calcConcentration(ratio);
-		// Begin printing
-		debug_out(F("LPO PM25	 : "), DEBUG_MIN_INFO, 0);
-		debug_out(String(lowpulseoccupancyP2), DEBUG_MIN_INFO, 1);
-		debug_out(F("Ratio PM25 : "), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(ratio) + " %", DEBUG_MIN_INFO, 1);
-		debug_out(F("PM25 Count : "), DEBUG_MIN_INFO, 0);
-		debug_out(Float2String(concentration), DEBUG_MIN_INFO, 1);
-
-		// json for push to api / P2
-		last_value_PPD_P2 = concentration;
-		s += Value2Json("durP2", String(lowpulseoccupancyP2));
-		s += Value2Json("ratioP2", Float2String(ratio));
-		s += Value2Json("P2", Float2String(last_value_PPD_P2));
-
-		debug_out("----", DEBUG_MIN_INFO, 1);
-	}
-
-	debug_out(String(FPSTR(DBG_TXT_END_READING)) + FPSTR(SENSORS_PPD42NS), DEBUG_MED_INFO, 1);
-
-	return s;
-}
-#endif
 
 #ifdef CFG_GPS
 /*****************************************************************
@@ -3701,52 +3295,6 @@ String sensorGPS() {
 }
 #endif
 
-#ifdef CFG_UPDATE
-/*****************************************************************
- * AutoUpdate																										*
- *****************************************************************/
-static void autoUpdate() {
-	if (cfg::auto_update) {
-		debug_out(F("Starting OTA update ..."), DEBUG_MIN_INFO, 1);
-		debug_out(F("NodeMCU firmware : "), DEBUG_MIN_INFO, 0);
-		debug_out(SOFTWARE_VERSION, DEBUG_MIN_INFO, 1);
-		debug_out(UPDATE_HOST, DEBUG_MED_INFO, 1);
-		debug_out(UPDATE_URL, DEBUG_MED_INFO, 1);
-
-		const String SDS_version = cfg::sds_read ? SDS_version_date() : "";
-		display_debug(F("Looking for"), F("OTA update"));
-		last_update_attempt = millis();
-	 #ifdef ESP32
-			const HTTPUpdateResult ret = httpUpdate.update(client, UPDATE_HOST, UPDATE_PORT, UPDATE_URL,
-	 #else
-			const HTTPUpdateResult ret = ESPhttpUpdate.update(UPDATE_HOST, UPDATE_PORT, UPDATE_URL,
-	 #endif
-
-									 SOFTWARE_VERSION + String(" ") + esp_chipid + String(" ") + SDS_version + String(" ") +
-									 String(cfg::current_lang) + String(" ") + String(INTL_LANG) + String(" ") +
-									 String(cfg::use_beta ? "BETA" : ""));
-
-		switch(ret) {
-		case HTTP_UPDATE_FAILED:
-			debug_out(String(FPSTR(DBG_TXT_UPDATE)) + FPSTR(DBG_TXT_UPDATE_FAILED), DEBUG_ERROR, 0);
-			#ifdef ESP32
-				debug_out(httpUpdate.getLastErrorString().c_str(), DEBUG_ERROR, 1);
-			#else
-				debug_out(ESPhttpUpdate.getLastErrorString().c_str(), DEBUG_ERROR, 1);
-			#endif
-			display_debug(FPSTR(DBG_TXT_UPDATE), FPSTR(DBG_TXT_UPDATE_FAILED));
-			break;
-		case HTTP_UPDATE_NO_UPDATES:
-			debug_out(String(FPSTR(DBG_TXT_UPDATE)) + FPSTR(DBG_TXT_UPDATE_NO_UPDATE), DEBUG_MIN_INFO, 1);
-			display_debug(FPSTR(DBG_TXT_UPDATE), FPSTR(DBG_TXT_UPDATE_NO_UPDATE));
-			break;
-		case HTTP_UPDATE_OK:
-			debug_out(String(FPSTR(DBG_TXT_UPDATE)) + FPSTR(DBG_TXT_UPDATE_OK), DEBUG_MIN_INFO, 1); // may not called we reboot the ESP
-			break;
-		}
-	}
-}
-#endif
 
 static String displayGenerateFooter(unsigned int screen_count) {
 	String display_footer;
@@ -3981,29 +3529,6 @@ void display_values() {
 		}
 	}
 
-	switch (screens[next_display_count % screen_count]) {
-	case (1):
-		display_lines[0] = "PM2.5: " + check_display_value(pm25_value, -1, 1, 6);
-		display_lines[1] = "PM10:	" + check_display_value(pm10_value, -1, 1, 6);
-		break;
-	case (2):
-		display_lines[0] = "T: " + check_display_value(t_value, -128, 1, 6) + char(223) + "C";
-		display_lines[1] = "H: " + check_display_value(h_value, -1, 1, 6) + "%";
-		break;
-	case (3):
-		display_lines[0] = "Lat: " + check_display_value(lat_value, -200.0, 6, 11);
-		display_lines[1] = "Lon: " + check_display_value(lon_value, -200.0, 6, 11);
-		break;
-	case (4):
-		display_lines[0] = WiFi.localIP().toString();
-		display_lines[1] = WiFi.SSID();
-		break;
-	case (5):
-		display_lines[0] = "ID: " + esp_chipid;
-		display_lines[1] = "FW: " + String(SOFTWARE_VERSION);
-		break;
-	}
-
 	yield();
 
 	next_display_millis = millis() + DISPLAY_UPDATE_INTERVAL_MS;
@@ -4022,23 +3547,6 @@ void init_display() {
 
 #endif
 
-#ifdef CFG_PT_ADD
-/*****************************************************************
- * Init BMP280																									 *
- *****************************************************************/
-bool initBMP280(char addr) {
-	debug_out(F("Trying BMP280 sensor on "), DEBUG_MIN_INFO, 0);
-	debug_out(String(addr, HEX), DEBUG_MIN_INFO, 0);
-
-	if (bmp280.begin(addr)) {
-		debug_out(F(" ... found"), DEBUG_MIN_INFO, 1);
-		return true;
-	} else {
-		debug_out(F(" ... not found"), DEBUG_MIN_INFO, 1);
-		return false;
-	}
-}
-#endif
 
 #ifdef CFG_BME280
 /*****************************************************************
@@ -4065,14 +3573,6 @@ bool initBME280(char addr) {
 #endif
 
 static void powerOnTestSensors() {
-
-#ifdef CFG_PPD
-	if (cfg::ppd_read) {
-		pinMode(PPD_PIN_PM1, INPUT_PULLUP);								 // Listen at the designated PIN
-		pinMode(PPD_PIN_PM2, INPUT_PULLUP);								 // Listen at the designated PIN
-		debug_out(F("Read PPD..."), DEBUG_MIN_INFO, 1);
-	}
-#endif
 
 	if (cfg::pms_read) {
 		int retryCount = 0;
@@ -4247,9 +3747,7 @@ static bool acquireNetworkTime() {
 
 	debug_out(F("Setting time using SNTP"), DEBUG_MIN_INFO, 1);
 	debug_out(F("NTP.org:"),DEBUG_MIN_INFO,1);
-	#ifndef ESP32
-		settimeofday_cb(time_is_set);
-	#endif
+
 	configTime(GMT_OFF * 3600, 0, "pool.ntp.org");
 	while (retryCount++ < 20) {
 		// later than 2000/01/01:00:00:00
@@ -4340,9 +3838,7 @@ void setup() {
 	Serial.begin(9600, SWSERIAL_8N1, DEB_RX, DEB_TX, false, 95, 11);
 	debug_out(F("SW serial started"), DEBUG_MIN_INFO, 1);
 
-	#else
-	Serial.begin(74880);					// Output to Serial at 9600 baud
-	#endif
+
 
 
 	setenv("TZ", TZ_INFO, 1);
@@ -4396,9 +3892,6 @@ void setup() {
 	init_display();
 #endif
 
-	#ifndef ESP32
-	setup_webserver();
-	#endif
 	display_debug(F("Connecting to"), String(cfg::wlanssid));
 	connectWifi();
 
@@ -4973,13 +4466,6 @@ void loop() {
 	}
 	last_micro = act_micro;
 
-#ifdef CFG_PPD
-	if (cfg::ppd_read) {
-		debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + "PPD", DEBUG_MAX_INFO, 1);
-		result_PPD = sensorPPD();
-	}
-#endif
-
 
 	if ((WiFi.status() == WL_CONNECTED) && !got_ntp) {
 
@@ -4989,8 +4475,6 @@ void loop() {
 		debug_out(String(got_ntp?"":"not ")+F("received"), DEBUG_MIN_INFO, 1);
 
 	}
-
-
 
 	if (after_send && !got_ntp){
 		//connectWifi();
@@ -5026,43 +4510,7 @@ void loop() {
 	server.handleClient();
 
 	if (send_now) {
-#ifdef CFG_DHT
-		if (cfg::dht_read) {
-			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_DHT22), DEBUG_MAX_INFO, 1);
-			result_DHT = sensorDHT();											 // getting temperature and humidity (optional)
-		}
-#endif
-#ifdef CFG_PT_ADD
-		if (cfg::htu21d_read) {
-			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_HTU21D), DEBUG_MAX_INFO, 1);
-			result_HTU21D = sensorHTU21D();								 // getting temperature and humidity (optional)
-		}
 
-
-
-		if (cfg::bmp280_read && (! bmp280_init_failed)) {
-			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP280), DEBUG_MAX_INFO, 1);
-			result_BMP280 = sensorBMP280();								 // getting temperature, humidity and pressure (optional)
-		}
-#endif
-
-#ifdef CFG_AIn
-		if (A0_Cnt) {
-			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + F("A0 input"), DEBUG_MAX_INFO, 1);
-			result_A0 = sensorA0();								 // getting analog input value
-		}
-#endif
-
-#ifdef CFG_BMP180
-		if (cfg::bmp_read && (! bmp_init_failed)) {
-			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BMP180), DEBUG_MAX_INFO, 1);
-			result_BMP = sensorBMP();											 // getting temperature and pressure (optional)
-
-			Serial.print("result_BMP = "); // debug BMP
-			Serial.println(result_BMP);
-
-		}
-#endif
 #ifdef CFG_BME280
 		if (cfg::bme280_read && (! bme280_init_failed)) {
 			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_BME280), DEBUG_MAX_INFO, 1);
@@ -5070,37 +4518,8 @@ void loop() {
 		}
 #endif
 
-#ifdef CFG_DALLAS
-		if (cfg::ds18b20_read) {
-			debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + FPSTR(SENSORS_DS18B20), DEBUG_MAX_INFO, 1);
-			result_DS18B20 = sensorDS18B20();							 // getting temperature (optional)
-		}
-#endif
 
 	}
-
-#ifdef CFG_AIn
-	// Analog input reading
-	if (msSince(last_A0_millis) > 1000) {
-		const auto AI = analogRead(A0)*1.0; // to float format
-
-		debug_out(String(FPSTR(DBG_TXT_CALL_SENSOR)) + "A0 input", DEBUG_MAX_INFO, 1);
-		if(A0_Cnt){
-			last_value_A0_Max	= std::max(AI, last_value_A0_Max); // Maximum
-			last_value_A0_Min	= std::min(AI, last_value_A0_Min); // Minimum
-			last_value_A0_Avg += AI;															// Average
-			A0_Cnt++;																						 // number of measurements
-		}
-		else{
-			last_value_A0_Max = AI; // Maximum
-			last_value_A0_Min = AI; // Minimum
-			last_value_A0_Avg = AI; // Average
-			A0_Cnt						= 1;	// number of measurements
-		}
-
-		last_A0_millis = act_milli;
-	}
-#endif
 
 #ifdef CFG_GPS
 	if (cfg::gps_read && ((msSince(starttime_GPS) > SAMPLETIME_GPS_MS) || send_now)) {
@@ -5146,17 +4565,7 @@ void loop() {
 
 		server.stop();
 		const int HTTP_PORT_DUSTI = (cfg::ssl_dusti ? 443 : 80);
-#ifdef CFG_PPD
-		if (cfg::ppd_read) {
-			data += result_PPD;
-			if (cfg::send2dusti) {
-				debug_out(String(FPSTR(DBG_TXT_SENDING_TO_LUFTDATEN)) + F("(PPD42NS): "), DEBUG_MIN_INFO, 1);
-				start_send = millis();
-				sendLuftdaten(result_PPD, PPD_API_PIN, HOST_DUSTI, HTTP_PORT_DUSTI, URL_DUSTI, true, "PPD_");
-				sum_send_time += millis() - start_send;
-			}
-		}
-#endif
+
 		if (cfg::sds_read) {
 			data += result_SDS;
 			if (cfg::send2dusti) {
@@ -5268,11 +4677,7 @@ void loop() {
 		server.begin();
 
 		checkForceRestart();
-		#ifdef CFG_UPDATE
-				if (msSince(last_update_attempt) > PAUSE_BETWEEN_UPDATE_ATTEMPTS_MS) {
-					autoUpdate();
-				}
-		#endif
+
 		sending_time = (4 * sending_time + sum_send_time) / 5;
 		debug_out(F("Time for sending data (ms): "), DEBUG_MIN_INFO, 0);
 		debug_out(String(sending_time), DEBUG_MIN_INFO, 1);
@@ -5291,8 +4696,6 @@ void loop() {
 				debug_out("\nConnected", DEBUG_MIN_INFO, 1);
 			}
 		}
-
-
 
 		// Resetting for next sampling
 		last_data_string = data;
@@ -5317,22 +4720,6 @@ void loop() {
 	yield();
 
 	WDT_last_loop = millis(); // Resets custom WDT
-
-
-	#ifdef CFG_BLINK
-		digitalWrite(D0, HIGH);
-	#endif
-
-	#ifdef CFG_BLINK
-	if (sample_count % 50000 == 0) {
-
-		//pinMode(D0, OUTPUT);		 // Initialize the LED_BUILTIN pin as an output
-		digitalWrite(D0, LOW);
-
-
-	}
-	#endif
-
 
 	Buttons();
 

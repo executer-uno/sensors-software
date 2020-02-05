@@ -55,34 +55,18 @@
 #define PWD_INFLUX ""
 
 // define pins for I2C
-#if defined(ESP8266)
-  #define I2C_PIN_SCL D4
-  #define I2C_PIN_SDA D3
-#else
   #define I2C_PIN_SCL OLED_SCL
   #define I2C_PIN_SDA OLED_SDA
-#endif
 
-// define pin for one wire sensors
-#if defined(ESP8266)
-#define ONEWIRE_PIN D7
-#endif
+
 
 // define serial interface pins for particle sensors
 // Serial confusion: These definitions are based on SoftSerial
 // TX (transmitting) pin on one side goes to RX (receiving) pin on other side
 // SoftSerial RX PIN is D1 and goes to SDS TX
 // SoftSerial TX PIN is D2 and goes to SDS RX
-#if defined(ESP8266)
-#define PM_SERIAL_RX D1
-#define PM_SERIAL_TX D2
-#endif
 
 // define serial interface pins for GPS modules
-#if defined(ESP8266)
-#define GPS_SERIAL_RX D5
-#define GPS_SERIAL_TX D6
-#endif
 
 #if defined(ESP32)
 
@@ -116,14 +100,7 @@
 #define HTU21D_API_PIN 7
 
 #define PPD_READ 0
-#ifdef CFG_PPD
-// PPD42NS, dergnstigere der beiden Feinstaubsensoren
-#define PPD_API_PIN 5
-  #if defined(ARDUINO_SAMD_ZERO) || defined(ESP8266)
-  #define PPD_PIN_PM1 D6
-  #define PPD_PIN_PM2 D5
-  #endif
-#endif
+
 
 // SDS011, der etwas teuerere Feinstaubsensor
 #define SDS_READ 1
@@ -189,56 +166,8 @@
 #define DEBUG_MED_INFO 4
 #define DEBUG_MAX_INFO 5
 
-/*
-static const uint16_t suites[] PROGMEM = {
-	BR_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-	BR_TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-	BR_TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-	BR_TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-	BR_TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-	BR_TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-};
-*/
 
-// Definition GPIOs for Zero based Arduino Feather M0 LoRaWAN
-#if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
-// Required for Serial on Zero based boards
-#define Serial SERIAL_PORT_USBVIRTUAL
-//GPIO Pins
-#define D0 0
-#define D1 1
-#define D2 2
-#define D3 3
-#define D4 4
-#define D5 5
-#define D6 6
-#define D7 7
-#define D8 8
-#define D9 9
-#define D10 10
-#define D11 11
-#define D12 12
-// LoRa module
-#define RFM69_CS 8
-#define RFM69_RST 4
-#define RFM69_INT 3
-#define RF69_FREQ 868.0
-#define CLIENT_ADDRESS 2
-#define SERVER_ADDRESS 100
-#endif
 
-#if defined(ESP8266)
-//GPIO Pins
-#define D0 16
-#define D1 5    // RX Serial SDS
-#define D2 4    // TX Serial SDS
-#define D3 0    // I2C SDA
-#define D4 2    // I2C SCL
-#define D5 14   // RX GPS
-#define D6 12   // TX GPS
-#define D7 13   // OneWire
-#define D8 15
-#endif
 
 #if defined(ESP32)
 //GPIO Pins
