@@ -522,7 +522,8 @@ DallasTemperature ds18b20(&oneWire);
 /*****************************************************************
  * GPS declaration																							 *
  *****************************************************************/
-TinyGPSPlus gps;
+	TinyGPSPlus gps;
+	bool 		GPS_EN = false;
 #endif
 
 /*****************************************************************
@@ -4235,6 +4236,70 @@ static bool acquireNetworkTime() {
 	return false;
 }
 
+/*****************************************************************
+ * Proceed buttons																										 *
+ *****************************************************************/
+void Buttons(){
+
+
+	if(!digitalRead(BUT_B)){
+		if(++BUT_B_CAP>500){
+			BUT_B_CAP=500;
+			if(!BUT_B_PRESS && digitalRead(BUT_A)){
+				//on press action (only one button pressed)
+				next_display_count += 1;
+				debug_out(F("Switch to next display."), DEBUG_MIN_INFO, 1);
+				next_display_millis = 0; // update display
+			}
+
+			if(!BUT_B_PRESS && BUT_A_CAP>10){
+				//on press action (two buttons pressed)
+				GPS_EN != GPS_EN;
+			}
+
+
+			BUT_B_PRESS=true;
+		}
+	}
+	else{
+		if(--BUT_B_CAP<0){
+			BUT_B_CAP=0;
+			if(BUT_B_PRESS){
+				//on release action
+			}
+			BUT_B_PRESS=false;
+		}
+	}
+
+
+	if(!digitalRead(BUT_A)){
+		if(++BUT_A_CAP>500){
+			BUT_A_CAP=500;
+			if(!BUT_A_PRESS && digitalRead(BUT_B)){
+				//on press action  (only one button pressed)
+				next_display_count -= 1;
+				debug_out(F("Switch to previos display."), DEBUG_MIN_INFO, 1);
+				next_display_millis = 0; // update display
+			}
+			if(!BUT_A_PRESS && BUT_B_CAP>10){
+				//on press action (two buttons pressed)
+				GPS_EN != GPS_EN;
+			}
+			BUT_A_PRESS=true;
+		}
+	}
+	else{
+		if(--BUT_A_CAP<0){
+			BUT_A_CAP=0;
+			if(BUT_A_PRESS){
+				//on release action
+			}
+			BUT_A_PRESS=false;
+		}
+	}
+
+
+}
 
 
 /*****************************************************************
@@ -4259,7 +4324,7 @@ void setup() {
 
 
 	// Configure buttons
-	pinMode(BUT_A, INPUT_PULLDOWN);
+	pinMode(BUT_A, INPUT_PULLUP);
 	pinMode(BUT_B, INPUT_PULLUP);
 
 	#if defined(BMP180) || defined(BME280) || defined(CFG_PT_ADD)
@@ -5229,27 +5294,9 @@ void loop() {
 	}
 	#endif
 
-	if(!digitalRead(BUT_B)){
-		if(++BUT_B_CAP>100){
-			BUT_B_CAP=100;
-			if(!BUT_B_PRESS){
-				//on press action
-				next_display_count += 1;
-				debug_out(F("Switch to next display."), DEBUG_MIN_INFO, 1);
-				next_display_millis = 0; // update display
-			}
-			BUT_B_PRESS=true;
-		}
-	}
-	else{
-		if(--BUT_B_CAP<0){
-			BUT_B_CAP=0;
-			if(BUT_B_PRESS){
-				//on release action
-			}
-			BUT_B_PRESS=false;
-		}
-	}
 
+	Buttons();
 
 }
+
+
