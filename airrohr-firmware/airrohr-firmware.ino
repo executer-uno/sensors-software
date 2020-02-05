@@ -448,6 +448,7 @@ bool bme280_init_failed = false;
 #endif
 
 int TimeZone = 2;
+String time_str = "";
 
 #ifdef CFG_LCD
 /*****************************************************************
@@ -1576,6 +1577,19 @@ String add_sensor_type(const String& sensor_text) {
 	s.replace("{h}", FPSTR(INTL_HUMIDITY));
 	s.replace("{p}", FPSTR(INTL_PRESSURE));
 	return s;
+}
+
+
+String printLocalTime(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain printLocalTime time");
+    return "Time Error";
+  }
+  //See http://www.cplusplus.com/reference/ctime/strftime/
+  char output[80];
+  strftime(output, 80, "%xT%X%Z"  , &timeinfo); //http://www.c-cpp.ru/content/strftime
+  return String(output);
 }
 
 /*****************************************************************
@@ -3595,10 +3609,10 @@ String sensorGPS() {
 			    timezone utc = {0,TimeZone};
 			    const timezone *tz = &utc;
 
-			    t.tm_year = gps.date.year()-1900;
-			    t.tm_mon  = gps.date.month()-1;           // Month, 0 - jan
-			    t.tm_mday = gps.date.day();               // Day of the month
-			    t.tm_hour = gps.time.hour();
+			    t.tm_year = gps.date.year()  - 1900;
+			    t.tm_mon  = gps.date.month() - 1;   // Month, 0 - jan
+			    t.tm_mday = gps.date.day();         // Day of the month
+			    t.tm_hour = gps.time.hour() + GMT_OFF;
 			    t.tm_min  = gps.time.minute();
 			    t.tm_sec  = gps.time.second();
 			    t_of_day  = mktime(&t);
@@ -3606,14 +3620,15 @@ String sensorGPS() {
 			    epoch = {t_of_day, 0};
 
 			    settimeofday(tv, tz);
+				setenv("TZ", TZ_INFO, 1);
+				tzset(); 							// Assign the local timezone from setenv
 
 				debug_out(F("GPS Time setted"), DEBUG_MAX_INFO, 1);
 				got_ntp = true;
 				timeUpdate = millis() + 300000;
 
-				struct tm now;
-				getLocalTime(&now,0);
-				Serial.println(&now," %B %d %Y %H:%M:%S (%A)");
+				time_str = printLocalTime();
+				Serial.println("----------> Local Time = " + time_str);
 
 			}
 
@@ -3934,41 +3949,8 @@ void display_values() {
 
 
 			display.display();
-		}/*
-		if (cfg::has_sh1106) {
-			display_sh1106.clear();
-			display_sh1106.displayOn();
-			display_sh1106.setTextAlignment(TEXT_ALIGN_CENTER);
-			display_sh1106.drawString(64, 1, display_header);
-			display_sh1106.setTextAlignment(TEXT_ALIGN_LEFT);
-			display_sh1106.drawString(0, 16, display_lines[0]);
-			display_sh1106.drawString(0, 28, display_lines[1]);
-			display_sh1106.drawString(0, 40, display_lines[2]);
-			display_sh1106.setTextAlignment(TEXT_ALIGN_CENTER);
-			display_sh1106.drawString(64, 52, displayGenerateFooter(screen_count));
-			display_sh1106.display();
 		}
-		if (cfg::has_lcd2004_27) {
-			display_header = String((next_display_count % screen_count) + 1) + "/" + String(screen_count) + " " + display_header;
-			display_lines[0].replace(" µg/m³", "");
-			display_lines[0].replace("°", String(char(223)));
-			display_lines[1].replace(" µg/m³", "");
-			lcd_2004_27.clear();
-			lcd_2004_27.setCursor(0, 0);
-			lcd_2004_27.print(display_header);
-			lcd_2004_27.setCursor(0, 1);
-			lcd_2004_27.print(display_lines[0]);
-			lcd_2004_27.setCursor(0, 2);
-			lcd_2004_27.print(display_lines[1]);
-			lcd_2004_27.setCursor(0, 3);
-			lcd_2004_27.print(display_lines[2]);
-		}*/
 	}
-
-// ----5----0----5----0
-// PM10/2.5: 1999/999
-// T/H: -10.0°C/100.0%
-// T/P: -10.0°C/1000hPa
 
 	switch (screens[next_display_count % screen_count]) {
 	case (1):
@@ -3992,27 +3974,8 @@ void display_values() {
 		display_lines[1] = "FW: " + String(SOFTWARE_VERSION);
 		break;
 	}
-/*
-	if (cfg::has_lcd1602_27) {
-		lcd_1602_27.clear();
-		lcd_1602_27.setCursor(0, 0);
-		lcd_1602_27.print(display_lines[0]);
-		lcd_1602_27.setCursor(0, 1);
-		lcd_1602_27.print(display_lines[1]);
-	}
-	if (cfg::has_lcd1602) {
-		lcd_1602_3f.clear();
-		lcd_1602_3f.setCursor(0, 0);
-		lcd_1602_3f.print(display_lines[0]);
-		lcd_1602_3f.setCursor(0, 1);
-		lcd_1602_3f.print(display_lines[1]);
-	}
- */
-	yield();
-	//debug_out(F("yield() called from 3629"), DEBUG_MIN_INFO, 0);
-	//debug_out("", DEBUG_MIN_INFO, 1);
 
-	//next_display_count += 1;
+	yield();
 
 	next_display_millis = millis() + DISPLAY_UPDATE_INTERVAL_MS;
 }
@@ -4027,24 +3990,7 @@ void init_display() {
 	//display_sh1106.init();
 }
 
-/*****************************************************************
- * Init LCD display																							*
- *****************************************************************/
-/*
-void init_lcd() {
-	if (cfg::has_lcd1602_27) {
-		lcd_1602_27.init();
-		lcd_1602_27.backlight();
-	}
-	if (cfg::has_lcd1602) {
-		lcd_1602_3f.init();
-		lcd_1602_3f.backlight();
-	}
-	if (cfg::has_lcd2004_27) {
-		lcd_2004_27.init();
-		lcd_2004_27.backlight();
-	}
-}*/
+
 #endif
 
 #ifdef CFG_PT_ADD
@@ -4200,45 +4146,6 @@ static void powerOnTestSensors() {
 	}
 
 
-#ifdef CFG_DHT
-	if (cfg::dht_read) {
-		dht.begin();																				// Start DHT
-		debug_out(F("Read DHT..."), DEBUG_MIN_INFO, 1);
-	}
-#endif
-
-#ifdef CFG_PT_ADD
-	if (cfg::htu21d_read) {
-		htu21d.begin();																		 // Start HTU21D
-		debug_out(F("Read HTU21D..."), DEBUG_MIN_INFO, 1);
-	}
-
-
-
-	if (cfg::bmp280_read) {
-		debug_out(F("Read BMP280..."), DEBUG_MIN_INFO, 1);
-		if (!initBMP280(0x76) && !initBMP280(0x77)) {
-			debug_out(F("Check BMP280 wiring"), DEBUG_MIN_INFO, 1);
-			bmp280_init_failed = 1;
-		}
-	}
-#endif
-
-#ifdef CFG_AIn
-	debug_out(F("Read A0 input..."), DEBUG_MIN_INFO, 1);
-	Serial.println(analogRead(A0));
-#endif
-
-#ifdef CFG_BMP180
-	if (cfg::bmp_read) {
-		debug_out(F("Read BMP..."), DEBUG_MIN_INFO, 1);
-		if (!bmp.begin()) {
-			debug_out(F("No valid BMP085 sensor, check wiring!"), DEBUG_MIN_INFO, 1);
-			bmp_init_failed = 1;
-		}
-	}
-#endif
-
 #ifdef CFG_BME280
 	if (cfg::bme280_read) {
 		debug_out(F("Read BME280..."), DEBUG_MIN_INFO, 1);
@@ -4246,13 +4153,6 @@ static void powerOnTestSensors() {
 			debug_out(F("Check BME280 wiring"), DEBUG_MIN_INFO, 1);
 			bme280_init_failed = 1;
 		}
-	}
-#endif
-
-#ifdef CFG_DALLAS
-	if (cfg::ds18b20_read) {
-		ds18b20.begin();																		// Start DS18B20
-		debug_out(F("Read DS18B20..."), DEBUG_MIN_INFO, 1);
 	}
 #endif
 
@@ -4332,18 +4232,6 @@ static bool acquireNetworkTime() {
 		debug_out(".",DEBUG_MIN_INFO,0);
 	}
 
-	debug_out(F("\nrouter/gateway:"),DEBUG_MIN_INFO,1);
-	retryCount = 0;
-	configTime(0, 0, WiFi.gatewayIP().toString().c_str());
-	while (retryCount++ < 20) {
-		// later than 2000/01/01:00:00:00
-		if (getLocalTime(&timeinfo)) {
-			Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-			return true;
-		}
-		delay(500);
-		debug_out(".",DEBUG_MIN_INFO,0);
-	}
 	return false;
 }
 
@@ -4365,7 +4253,10 @@ void setup() {
 
 
 	setenv("TZ", TZ_INFO, 1);
-	tzset(); // Assign the local timezone from setenv
+	tzset(); 					// Assign the local timezone from setenv
+	time_str = printLocalTime();
+	Serial.println("----------> Local Time = "+time_str);
+
 
 	// Configure buttons
 	pinMode(BUT_A, INPUT_PULLDOWN);
@@ -4376,9 +4267,9 @@ void setup() {
 	#endif
 
 		char ssid[15]; //Create a Unique AP from MAC address
-		uint64_t chipid=ESP.getEfuseMac();//The chip ID is essentially its MAC address(length: 6 bytes).
+		uint64_t chipid= ESP.getEfuseMac();			//The chip ID is essentially its MAC address(length: 6 bytes).
 		uint16_t chiph = (uint16_t)(chipid>>32);	//High 2 bytes
-		uint32_t chipl = (uint32_t)(chipid);			//Low	4 bytes
+		uint32_t chipl = (uint32_t)(chipid);		//Low	4 bytes
 
 		snprintf(ssid,15,"%04X", chiph);
 		snprintf(ssid+4,15,"%08X", chipl);
@@ -4410,8 +4301,8 @@ void setup() {
 
 #ifdef CFG_LCD
 	init_display();
-	//init_lcd();
 #endif
+
 	#ifndef ESP32
 	setup_webserver();
 	#endif
@@ -4419,7 +4310,6 @@ void setup() {
 	connectWifi();
 
 	create_basic_auth_strings();
-
 
 	if ((WiFi.status() == WL_CONNECTED) && !got_ntp) {
 		debug_out(F("\nWiFi connected - start web server"), DEBUG_MIN_INFO, 0);
@@ -4509,7 +4399,7 @@ void setup() {
 						 Serial.println("PRAGMA default_cache_size set failure");
 					}
 
-					rc = db_exec(db, "CREATE TABLE IF NOT EXISTS measurements (date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL);");
+					rc = db_exec(db, "CREATE TABLE IF NOT EXISTS measurements (datetime, lat REAL, long REAL, temp REAL, press REAL, humid REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL);");
 					if (rc != SQLITE_OK) {
 						 sqlite3_close(db);
 						 Serial.println("Table measurements creation failure");
@@ -4675,7 +4565,6 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
 				// Connect to spreadsheet
 				client = new HTTPSRedirect(httpsPort);
-				//client->setInsecure();
 				client->setPrintResponseBody(false);
 				client->setContentTypeHeader("application/json");
 
@@ -4733,7 +4622,7 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
 							//"CREATE TABLE measurements (date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL)"
 							// get data from storage
-							const char *sql = "SELECT rowid, date, time, lat, long, temp, press, pms1_pm100, pms1_pm025, pms2_pm100, pms2_pm025 FROM measurements LIMIT 1";
+							const char *sql = "SELECT rowid, datetime, lat, long, temp, press, humid, pms1_pm100, pms1_pm025, pms2_pm100, pms2_pm025 FROM measurements LIMIT 1";
 							if (sqlite3_prepare_v2(db, sql, -1, &res, NULL) != SQLITE_OK) {
 									String resp = "Failed to fetch data: ";
 									resp += sqlite3_errmsg(db);
@@ -4750,13 +4639,13 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 										Serial.printf("Retrived rowid=%ld\r\n",	rowid);
 
 										// GPS data
-										data += Var2Json(F("GPS_date"),						sqlite3_column_int(res, 1));
-										data += Var2Json(F("GPS_time"),						sqlite3_column_int(res, 2));
-										data += Var2Json(F("GPS_lat"),						sqlite3_column_double(res, 3));
-										data += Var2Json(F("GPS_lon"),						sqlite3_column_double(res, 4));
+										data += Var2Json(F("datetime"),						sqlite3_column_int(res, 1));
+										data += Var2Json(F("GPS_lat"),						sqlite3_column_double(res, 2));
+										data += Var2Json(F("GPS_lon"),						sqlite3_column_double(res, 3));
 
-										data += Var2Json(F("BME280_pressure"),				sqlite3_column_double(res, 5));
-										data += Var2Json(F("BME280_temperature"), 			sqlite3_column_double(res, 6));
+										data += Var2Json(F("BME280_pressure"),				sqlite3_column_double(res, 4));
+										data += Var2Json(F("BME280_temperature"), 			sqlite3_column_double(res, 5));
+										data += Var2Json(F("BME280_humidity"), 				sqlite3_column_double(res, 6));
 
 										data += Var2Json(F("SDS_P1"),						sqlite3_column_double(res, 7));
 										data += Var2Json(F("SDS_P2"),						sqlite3_column_double(res, 8));
@@ -4790,12 +4679,6 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 
 												yield();
 												MemStat();
-
-												// Connect to spreadsheet
-												//client = new HTTPSRedirect(httpsPort);  // memory leakage
-												//client->setInsecure();
-												//client->setPrintResponseBody(false);
-												//client->setContentTypeHeader("application/json");
 
 												if (client != nullptr){
 													if (!client->connected()){
@@ -4859,7 +4742,6 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 									Serial.println(resp);
 								}
 							}
-							//sqlite3_finalize(res);
 							sqlite3_close(db);
 
 						}
@@ -4893,14 +4775,17 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 						/*
 						"CREATE TABLE measurements (date, time, lat REAL, long REAL, temp REAL, press REAL, pms1_pm100 REAL, pms1_pm025 REAL, pms2_pm100 REAL, pms2_pm025 REAL)"
 						*/
-						String query = "INSERT INTO measurements (date,time,lat,long,temp,press,pms1_pm100,pms1_pm025,pms2_pm100,pms2_pm025) VALUES (";
+						String query = "INSERT INTO measurements (datetime,lat,long,temp,press,humid,pms1_pm100,pms1_pm025,pms2_pm100,pms2_pm025) VALUES (";
 
-						query += "'" + last_value_GPS_date + "',";
-						query += "'" + last_value_GPS_time + "',";
+						time_str = printLocalTime();
+						Serial.println("----------> Local Time = "+time_str);
+
+						query += "'" + time_str + "',";
 						query += Float2String(last_value_GPS_lat) + ",";
 						query += Float2String(last_value_GPS_lon) + ",";
-						query += Float2String(last_value_BMP280_T) + ",";
-						query += Float2String(last_value_BMP280_P) + ",";
+						query += Float2String(last_value_BME280_T) + ",";
+						query += Float2String(last_value_BME280_P) + ",";
+						query += Float2String(last_value_BME280_H) + ",";
 						query += Float2String(last_value_SDS_P1) + ",";
 						query += Float2String(last_value_SDS_P2) + ",";
 						query += Float2String(last_value_PMS_P1) + ",";

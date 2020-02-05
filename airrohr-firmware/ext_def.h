@@ -31,8 +31,8 @@
 // NTP Server
 #define NTP_SERVER "0.europe.pool.ntp.org"
 
-#define TZ_INFO "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00" //"W. Europe Standard Time"
-// see http://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html
+#define TZ_INFO "EET-2EEST,M3.5.0/3,M10.5.0/4" //"Europe Kyiv,Ukraine"
+// see https://knowledgebase.progress.com/articles/Article/P129473
 
 // OpenSenseMap
 #define SENSEBOXID ""
