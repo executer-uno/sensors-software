@@ -5,8 +5,7 @@
  *      Author: E_CAD
  */
 
-
-
+#include "sensors.h"
 
 /*****************************************************************
  * send SDS011 command (start, stop, continuous mode, version		*

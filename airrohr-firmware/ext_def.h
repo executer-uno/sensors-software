@@ -1,9 +1,87 @@
 #pragma once
 
-// Language config
-#define CURRENT_LANG INTL_LANG
 
-#include "Credentials.h"
+
+
+
+
+/************************************************************************
+ * Google Spreadsheds to store online measurements:
+ * https://voltiq.ru/post-data-to-google-sheets-with-esp8266/
+ ************************************************************************/
+
+// increment on change
+#define SOFTWARE_VERSION "NRZ-2019-01GSAI"
+#define GMT_OFF			  2
+
+
+// Config functionality
+
+#define CFG_BME280
+#define CFG_GSHEET
+#define CFG_LCD
+#define CFG_GPS
+#define CFG_SQL
+
+//#define CFG_DHT
+//#define CFG_DALLAS 		// conflicts with LCD+SQL+SD
+//#define CFG_UPDATE
+//#define CFG_PT_ADD
+//#define CFG_BMP180
+//#define CFG_BLINK
+//#define CFG_PPD
+//#define CFG_AIn		 	// read analog input
+
+
+
+
+
+#ifdef CFG_SQL
+
+	//#include "SPIFFS.h"
+	/* You only need to format SPIFFS the first time you run a
+		 test or else use the SPIFFS plugin to create a partition
+		 https://github.com/me-no-dev/arduino-esp32fs-plugin */
+	#define FORMAT_SPIFFS_IF_FAILED true
+	#define DB_PATH "/sd/DB_pm25.db"
+
+#endif
+
+
+
+
+
+#define HOST_MADAVI "api-rrd.madavi.de"
+#define URL_MADAVI "/data.php"
+#define PORT_MADAVI 80
+
+#define HOST_DUSTI "api.luftdaten.info"
+#define URL_DUSTI "/v1/push-sensor-data/"
+#define PORT_DUSTI 80
+
+// IMPORTANT: NO MORE CHANGES TO VARIABLE NAMES NEEDED FOR EXTERNAL APIS
+
+#define HOST_SENSEMAP "ingress.opensensemap.org"
+#define URL_SENSEMAP "/boxes/BOXID/data?luftdaten=1"
+#define PORT_SENSEMAP 443
+
+#define HOST_FSAPP "www.h2801469.stratoserver.net"
+#define URL_FSAPP "/data.php"
+#define PORT_FSAPP 80
+
+#define UPDATE_HOST "www.madavi.de"
+#define UPDATE_URL "/sensor/update/firmware.php"
+#define UPDATE_PORT 80
+
+#define JSON_BUFFER_SIZE 2000
+
+
+
+
+
+
+
+
 
 
 // BasicAuth config
@@ -170,26 +248,21 @@
 
 
 #if defined(ESP32)
-//GPIO Pins
-#include "SSD1306Wire.h" 
-#define OLED_CLASS_OBJ  SSD1306Wire
-#define OLED_ADDRESS    0x3C
-#define OLED_SDA    21
-#define OLED_SCL    22
-#define OLED_RST    -1
+	//GPIO Pins
+	#include "SSD1306Wire.h"
+	#define OLED_CLASS_OBJ  SSD1306Wire
+	#define OLED_ADDRESS    0x3C
+	#define OLED_SDA    21
+	#define OLED_SCL    22
+	#define OLED_RST    -1
 
-#define SDCARD_MOSI 23
-#define SDCARD_MISO 19
-#define SDCARD_SCLK 18
-#define SDCARD_CS   5
+	#define SDCARD_MOSI 23
+	#define SDCARD_MISO 19
+	#define SDCARD_SCLK 18
+	#define SDCARD_CS   5
 
 #endif
 
 #define SQLITE_OK           0   /* Successful result */
 
-enum class PmSensorCmd {
-	Start,
-	Stop,
-	ContinuousMode,
-	VersionDate
-};
+
