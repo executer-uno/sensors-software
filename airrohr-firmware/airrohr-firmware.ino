@@ -3577,7 +3577,7 @@ String sensorGPS() {
 			}
 			if (gps.altitude.isValid()) {
 				last_value_GPS_alt = gps.altitude.meters();
-				String gps_alt = Float2String(last_value_GPS_lat, 2);
+				String gps_alt = Float2String(last_value_GPS_alt, 2);
 			} else {
 				last_value_GPS_alt = -1000;
 				debug_out(F("Altitude INVALID"), DEBUG_MAX_INFO, 1);
@@ -3668,8 +3668,15 @@ String sensorGPS() {
 		debug_out("Date: " + last_value_GPS_date, DEBUG_MIN_INFO, 1);
 		debug_out("Time " + last_value_GPS_time, DEBUG_MIN_INFO, 1);
 		debug_out("----", DEBUG_MIN_INFO, 1);
-		s += Value2Json(F("GPS_lat"), Float2String(last_value_GPS_lat, 6));
-		s += Value2Json(F("GPS_lon"), Float2String(last_value_GPS_lon, 6));
+		if(GPS_EN){
+			s += Value2Json(F("GPS_lat"), Float2String(last_value_GPS_lat, 6));
+			s += Value2Json(F("GPS_lon"), Float2String(last_value_GPS_lon, 6));
+		}
+		else
+		{
+			s += Value2Json(F("GPS_lat"), "-200");
+			s += Value2Json(F("GPS_lon"), "-200");
+		}
 		s += Value2Json(F("GPS_height"), Float2String(last_value_GPS_alt, 2));
 		s += Value2Json(F("GPS_date"), last_value_GPS_date);
 		s += Value2Json(F("GPS_time"), last_value_GPS_time);
@@ -4846,6 +4853,17 @@ static unsigned long sendDataToOptionalApis(const String &data) {
 						Serial.println("----------> Local Time = "+time_str);
 
 						query += "'" + time_str + "',";
+
+						if(GPS_EN){
+							query += Float2String(last_value_GPS_lat) + ",";
+							query += Float2String(last_value_GPS_lon) + ",";
+						}
+						else
+						{
+							query += "-200" + ",";
+							query += "-200" + ",";
+						}
+
 						query += Float2String(last_value_GPS_lat) + ",";
 						query += Float2String(last_value_GPS_lon) + ",";
 						query += Float2String(last_value_BME280_T) + ",";
