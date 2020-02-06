@@ -1,17 +1,13 @@
 #pragma once
 
 
-
-
-
-
 /************************************************************************
  * Google Spreadsheds to store online measurements:
  * https://voltiq.ru/post-data-to-google-sheets-with-esp8266/
  ************************************************************************/
 
 // increment on change
-#define SOFTWARE_VERSION "NRZ-2019-01GSAI"
+#define SOFTWARE_VERSION "NRZ-2020-02GSSQL"
 #define GMT_OFF			  2
 
 

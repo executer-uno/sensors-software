@@ -7,10 +7,95 @@
 
 #include "sensors.h"
 
+
+/*****************************************************************
+ * check display values, return '-' if undefined								 *
+ *****************************************************************/
+String check_display_value(double value, double undef, uint8_t len, uint8_t str_len) {
+	String s = (value != undef ? Float2String(value, len) : "-");
+	while (s.length() < str_len) {
+		s = " " + s;
+	}
+	return s;
+}
+
+/*****************************************************************
+ * convert float to string with a																*
+ * precision of two (or a given number of) decimal places				*
+ *****************************************************************/
+String Float2String(const double value) {
+	return Float2String(value, 2);
+}
+
+String Float2String(const double value, uint8_t digits) {
+	// Convert a float to String with two decimals.
+	char temp[15];
+
+	dtostrf(value, 13, digits, temp);
+	String s = temp;
+	s.trim();
+	return s;
+}
+
+/*****************************************************************
+ * convert value to json string																	*
+ *****************************************************************/
+String Value2Json(const String& type, const String& value) {
+	String s = F("{\"value_type\":\"{t}\",\"value\":\"{v}\"},");
+	s.replace("{t}", type);
+	s.replace("{v}", value);
+	return s;
+}
+
+/*****************************************************************
+ * convert string value to json string													 *
+ *****************************************************************/
+String Var2Json(const String& name, const String& value) {
+	String s = F("\"{n}\":\"{v}\",");
+	String tmp = value;
+	tmp.replace("\\", "\\\\"); tmp.replace("\"", "\\\"");
+	s.replace("{n}", name);
+	s.replace("{v}", tmp);
+	return s;
+}
+
+/*****************************************************************
+ * convert boolean value to json string													*
+ *****************************************************************/
+String Var2Json(const String& name, const bool value) {
+	String s = F("\"{n}\":\"{v}\",");
+	s.replace("{n}", name);
+	s.replace("{v}", (value ? "true" : "false"));
+	return s;
+}
+
+/*****************************************************************
+ * convert integer value to json string													*
+ *****************************************************************/
+String Var2Json(const String& name, const int value) {
+	String s = F("\"{n}\":\"{v}\",");
+	s.replace("{n}", name);
+	s.replace("{v}", String(value));
+	return s;
+}
+
+/*****************************************************************
+ * convert double value to json string													*
+ *****************************************************************/
+String Var2Json(const String& name, const double value) {
+	String s = F("\"{n}\":\"{v}\",");
+	s.replace("{n}", name);
+	s.replace("{v}", String(value));
+	return s;
+}
+
+
+
+
 /*****************************************************************
  * send SDS011 command (start, stop, continuous mode, version		*
  *****************************************************************/
-static bool SDS_cmd(PmSensorCmd cmd) {//static
+bool SDS_cmd(PmSensorCmd cmd) {//static
 	static constexpr uint8_t start_cmd[] PROGMEM = {
 		0xAA, 0xB4, 0x06, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x06, 0xAB
 	};
@@ -47,7 +132,7 @@ static bool SDS_cmd(PmSensorCmd cmd) {//static
 /*****************************************************************
  * send Plantower PMS sensor command start, stop, cont. mode		 *
  *****************************************************************/
-static bool PMS_cmd(PmSensorCmd cmd) {//static
+bool PMS_cmd(PmSensorCmd cmd) {//static
 	static constexpr uint8_t start_cmd[] PROGMEM = {
 		0x42, 0x4D, 0xE4, 0x00, 0x01, 0x01, 0x74
 	};
@@ -81,7 +166,7 @@ static bool PMS_cmd(PmSensorCmd cmd) {//static
 /*****************************************************************
  * send Honeywell PMS sensor command start, stop, cont. mode		 *
  *****************************************************************/
-static bool HPM_cmd(PmSensorCmd cmd) { //static
+bool HPM_cmd(PmSensorCmd cmd) { //static
 	static constexpr uint8_t start_cmd[] PROGMEM = {
 		0x68, 0x01, 0x01, 0x96
 	};
@@ -240,7 +325,7 @@ void disable_unneeded_nmea() {
 /*****************************************************************
  * read BME280 sensor values																		 *
  *****************************************************************/
-static String sensorBME280() {
+String sensorBME280() {
 	String s;
 
 	debug_out(String(FPSTR(DBG_TXT_START_READING)) + FPSTR(SENSORS_BME280), DEBUG_MED_INFO, 1);

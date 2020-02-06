@@ -112,10 +112,8 @@
 /******************************************************************
  * Project parts												  *
  ******************************************************************/
-#include "sensors.h"
-#include "convert.h"
 #include "globals.h"
-
+#include "sensors.h"
 
 
 
@@ -2327,7 +2325,7 @@ void Buttons(){
 
 			if(!BUT_B_PRESS && BUT_A_CAP>10){
 				//on press action (two buttons pressed)
-				GPS_EN != GPS_EN;
+				GPS_EN = !GPS_EN;
 			}
 
 
@@ -2356,7 +2354,7 @@ void Buttons(){
 			}
 			if(!BUT_A_PRESS && BUT_B_CAP>10){
 				//on press action (two buttons pressed)
-				GPS_EN != GPS_EN;
+				GPS_EN = !GPS_EN;
 			}
 			BUT_A_PRESS=true;
 		}

@@ -8,17 +8,14 @@
 #ifndef GLOBALS_H_
 #define GLOBALS_H_
 
-#define msSince(timestamp_before) (act_milli - (timestamp_before))
-
-
 #include "ext_def.h"
 
-enum class PmSensorCmd {
-	Start,
-	Stop,
-	ContinuousMode,
-	VersionDate
-};
+#define msSince(timestamp_before) (act_milli - (timestamp_before))
+
+#include "sensors.h"
+
+
+
 
 /*****************************************************************
  * Debug output																									*
